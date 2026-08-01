@@ -40,7 +40,7 @@ class ProviderPresetTests(unittest.TestCase):
         help_text = free_provider_help()
         self.assertIn("OpenRouter", help_text)
         self.assertIn("Groq", help_text)
-        self.assertIn("GitHub 模型", help_text)
+        self.assertIn("GitHub Models", help_text)
         self.assertNotIn("Bearer ", help_text)
 
     def test_builtin_openai_compatible_provider_is_routed(self) -> None:
@@ -48,10 +48,10 @@ class ProviderPresetTests(unittest.TestCase):
         with patch.object(
             cli,
             "translate_with_openai_compatible",
-            return_value={"translations": ["测试"]},
+            return_value={"translations": ["test result"]},
         ) as translate:
             result = cli.translate_with_configured_model("test", "", config)
-        self.assertEqual(result["translations"], ["测试"])
+        self.assertEqual(result["translations"], ["test result"])
         translate.assert_called_once()
 
 

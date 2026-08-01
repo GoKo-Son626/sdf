@@ -12,19 +12,19 @@ class DiagnosticsTests(unittest.TestCase):
     def test_report_never_contains_api_key(self) -> None:
         config = {
             "PROVIDER": "deepseek",
-            "PROVIDER_NAME": "DeepSeek（深度求索）",
+            "PROVIDER_NAME": "DeepSeek",
             "MODEL": "deepseek-v4-flash",
-            "API_KEY": "绝不能输出的测试密钥",
+            "API_KEY": "secret-that-must-never-appear",
             "SAVE_MODE": "off",
         }
         with (
-            patch.object(diagnostics, "config_file", return_value=Path("/不存在")),
+            patch.object(diagnostics, "config_file", return_value=Path("/missing")),
             patch("sys.stdout", new_callable=io.StringIO) as output,
-            patch.object(diagnostics.shutil, "which", return_value="/usr/bin/工具"),
+            patch.object(diagnostics.shutil, "which", return_value="/usr/bin/tool"),
         ):
             diagnostics.print_diagnostics(config)
         self.assertNotIn(config["API_KEY"], output.getvalue())
-        self.assertIn("DeepSeek（深度求索）", output.getvalue())
+        self.assertIn("DeepSeek", output.getvalue())
 
     def test_missing_desktop_commands_are_errors(self) -> None:
         items = diagnostics.collect_diagnostics(
@@ -49,7 +49,7 @@ class DiagnosticsTests(unittest.TestCase):
                     environ={"WAYLAND_DISPLAY": "wayland-1"},
                     which=lambda command: f"/usr/bin/{command}",
                 )
-        config_item = next(item for item in items if item.label == "配置文件")
+        config_item = next(item for item in items if item.label == "Configuration")
         self.assertEqual(config_item.level, "ok")
         self.assertIn("600", config_item.detail)
 

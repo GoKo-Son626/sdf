@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""终端多语言翻译工具：优先使用可配置大模型，失败时自动降级。"""
+"""Terminal multilingual translator: configurable LLM first, free fallback."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ def load_config() -> dict[str, str]:
             key, value = line.split("=", 1)
             config[key.strip()] = value.strip().strip("\"'")
 
-    # 通用环境变量的优先级高于配置文件。
+    # Generic environment variables take precedence.
     env_map = {
         "SDF_PROVIDER": "PROVIDER",
         "SDF_PROVIDER_NAME": "PROVIDER_NAME",
@@ -76,7 +76,7 @@ def load_config() -> dict[str, str]:
         if os.environ.get(key):
             config[key] = os.environ[key]
 
-    # 同时兼容各服务商常用的专用环境变量。
+    # Convenient provider-specific environment variables.
     if os.environ.get("DEEPSEEK_API_KEY"):
         config.setdefault("PROVIDER", "deepseek")
         config["API_KEY"] = os.environ["DEEPSEEK_API_KEY"]
@@ -100,7 +100,7 @@ def load_config() -> dict[str, str]:
         if os.environ.get(env_key) and config.get("PROVIDER") == provider_id:
             config["API_KEY"] = os.environ[env_key]
 
-    # 迁移早期仅支持 Gemini 的配置，避免升级后影响现有用户。
+    # Migrate the original Gemini-only config without breaking existing users.
     if "PROVIDER" not in config and config.get("GEMINI_API_KEY"):
         config["PROVIDER"] = "gemini"
         config["PROVIDER_NAME"] = "Gemini"
@@ -134,7 +134,7 @@ def save_config_values(
             disk_config.pop(key, None)
 
     lines = [
-        "# 此文件包含私密配置，请勿分享。",
+        "# This file contains private configuration. Do not share it.",
     ]
     ordered_keys = (
         "PROVIDER",
@@ -212,53 +212,53 @@ def set_save_mode(raw_mode: str) -> str | None:
 
 def storage_summary(config: dict[str, str]) -> str:
     path = vocabulary_path(config)
-    return f"保存模式：{save_mode(config)}；生词本：{path or '未设置'}"
+    return f"Save mode: {save_mode(config)}; vocabulary: {path or 'not set'}"
 
 
 def configure_storage() -> bool:
     config = load_config()
     current_path = vocabulary_path(config)
     print()
-    print(color("配置生词本", "1;36"))
-    print(f"当前路径：{current_path or '未设置'}")
-    raw_path = prompt_value("Markdown 文件路径", str(current_path or ""))
+    print(color("Configure vocabulary storage", "1;36"))
+    print(f"Current path: {current_path or 'not set'}")
+    raw_path = prompt_value("Markdown file path", str(current_path or ""))
     if not raw_path:
-        print(color("未设置路径，保存保持关闭。", "33"))
+        print(color("No path was set; saving remains disabled.", "33"))
         save_config_values({"SAVE_MODE": "off", "VOCABULARY_FILE": ""})
         return True
     path = set_vocabulary_path(raw_path)
 
-    print("  1. 关闭保存（默认）")
-    print("  2. 保存全部")
-    print("  3. 只保存单词和短术语")
-    print("  4. 只保存句子和长文本")
+    print("  1. Disable saving (default)")
+    print("  2. Save everything")
+    print("  3. Save words and short terms only")
+    print("  4. Save sentences and long text only")
     choices = {"1": "off", "2": "all", "3": "terms", "4": "texts"}
     current_mode = save_mode(config)
     default_choice = {value: key for key, value in choices.items()}.get(current_mode, "1")
-    choice = prompt_value("请选择", default_choice)
+    choice = prompt_value("Choose", default_choice)
     mode = choices.get(choice)
     if mode is None:
-        print(color("无效选择，保存模式未改变。", "31"))
+        print(color("Invalid choice; the save mode was not changed.", "31"))
         return False
     set_save_mode(mode)
-    print(color(f"✓ 生词本：{path}\n✓ 保存模式：{mode}", "32"))
+    print(color(f"✓ Vocabulary: {path}\n✓ Save mode: {mode}", "32"))
     return True
 
 
 def configure_provider() -> bool:
     while True:
         print()
-        print(color("配置大模型", "1;36"))
+        print(color("Configure an AI provider", "1;36"))
         for index, preset in enumerate(PROVIDER_PRESETS, start=1):
-            free_mark = " [免费]" if preset.free else ""
+            free_mark = " [free]" if preset.free else ""
             print(f"  {index}. {preset.name}{free_mark} — {preset.note}")
         custom_choice = len(PROVIDER_PRESETS) + 1
         none_choice = custom_choice + 1
-        print(f"  {custom_choice}. 任意 OpenAI 兼容接口")
-        print(f"  {none_choice}. 不使用大模型，只用免费备用翻译")
-        print("  h. 查看免费 API 密钥获取方法")
+        print(f"  {custom_choice}. Any OpenAI-compatible endpoint")
+        print(f"  {none_choice}. Keyless fallback translation only")
+        print("  h. Show free API key registration help")
         try:
-            choice = input("请选择 [1]: ").strip().lower() or "1"
+            choice = input("Choose [1]: ").strip().lower() or "1"
         except (EOFError, KeyboardInterrupt):
             print()
             return False
@@ -271,17 +271,17 @@ def configure_provider() -> bool:
             return False
         if choice == str(none_choice):
             save_provider_config(
-                {"PROVIDER": "none", "PROVIDER_NAME": "免费备用翻译"}
+                {"PROVIDER": "none", "PROVIDER_NAME": "Keyless fallback"}
             )
-            print(color("✓ 已设置为只使用免费备用翻译。", "32"))
+            print(color("✓ Configured to use keyless fallback translation only.", "32"))
             return True
         if choice == str(custom_choice):
-            print("适用于 OpenAI、Groq、OpenRouter、GitHub 模型、硅基流动等接口。")
-            provider_name = prompt_value("服务名称", "自定义大模型")
-            base_url = prompt_value("API 基础地址（通常以 /v1 结尾）")
-            model = prompt_value("模型名称")
+            print("Works with OpenAI, Groq, OpenRouter, GitHub Models, SiliconFlow, and similar endpoints.")
+            provider_name = prompt_value("Provider name", "Custom provider")
+            base_url = prompt_value("API base URL (usually ending in /v1)")
+            model = prompt_value("Model name")
             if not base_url or not model:
-                print(color("API 基础地址和模型名称不能为空。", "31"))
+                print(color("The base URL and model name are required.", "31"))
                 return False
             values = {
                 "PROVIDER": "openai-compatible",
@@ -289,16 +289,16 @@ def configure_provider() -> bool:
                 "BASE_URL": base_url,
                 "MODEL": model,
             }
-            key_label = f"{provider_name} API 密钥"
+            key_label = f"{provider_name} API Key"
             break
         try:
             preset = PROVIDER_PRESETS[int(choice) - 1]
         except (ValueError, IndexError):
-            print(color("无效选择，请重新输入。", "31"))
+            print(color("Invalid choice; try again.", "31"))
             continue
-        print(f"API 密钥获取地址：{preset.key_url}")
-        print(f"说明：{preset.note}")
-        model = prompt_value("模型名称", preset.model)
+        print(f"API key registration: {preset.key_url}")
+        print(f"Note: {preset.note}")
+        model = prompt_value("Model name", preset.model)
         values = {
             "PROVIDER": preset.provider_id,
             "PROVIDER_NAME": preset.name,
@@ -306,23 +306,23 @@ def configure_provider() -> bool:
         }
         if preset.base_url:
             values["BASE_URL"] = preset.base_url
-        key_label = f"{preset.name} API 密钥"
+        key_label = f"{preset.name} API Key"
         break
 
-    print("粘贴 API 密钥时终端不会显示字符。")
+    print("The API key will not be displayed while you paste or type it.")
     try:
         api_key = getpass.getpass(f"{key_label}: ").strip()
     except (EOFError, KeyboardInterrupt):
         print()
         return False
     if not api_key:
-        print(color("未输入 API 密钥，配置未改变。", "33"))
+        print(color("No API key entered; configuration was not changed.", "33"))
         return False
     values["API_KEY"] = api_key
     save_provider_config(values)
     print(
         color(
-            f"✓ 已配置 {values['PROVIDER_NAME']} / {values['MODEL']}。",
+            f"✓ Configured {values['PROVIDER_NAME']} / {values['MODEL']}.",
             "32",
         )
     )
@@ -361,20 +361,20 @@ def readable_http_error(exc: urllib.error.HTTPError) -> str:
         payload = json.loads(exc.read().decode("utf-8", errors="replace"))
         message = payload.get("error", {}).get("message")
         if message:
-            return f"HTTP {exc.code}：{message}"
+            return f"HTTP {exc.code}: {message}"
     except (json.JSONDecodeError, AttributeError, UnicodeDecodeError):
         pass
     common = {
-        400: "请求参数无效，可能是模型名称或 API 密钥类型不正确",
-        401: "API 密钥无效或已失效",
-        402: "账户余额不足或需要开通计费",
-        403: "API 密钥没有权限、服务未开通或所在地区受限",
-        404: "接口地址或模型名称不存在",
-        429: "API 余额、配额或请求频率已超限",
-        500: "大模型服务内部错误",
-        503: "大模型服务暂时繁忙",
+        400: "invalid request parameters, model name, or API key type",
+        401: "the API key is invalid or expired",
+        402: "the account has insufficient credit or requires billing",
+        403: "the API key lacks permission, the service is disabled, or the region is restricted",
+        404: "the endpoint or model does not exist",
+        429: "API credit, quota, or rate limit exceeded",
+        500: "the model service reported an internal error",
+        503: "the model service is temporarily busy",
     }
-    return f"HTTP {exc.code}：{common.get(exc.code, exc.reason)}"
+    return f"HTTP {exc.code}: {common.get(exc.code, exc.reason)}"
 
 
 def normalize_query(query: str) -> str:
@@ -382,29 +382,29 @@ def normalize_query(query: str) -> str:
 
 
 def sensitive_input_reason(query: str) -> str | None:
-    """在调用外部接口前拦截高置信度的凭据内容。"""
+    """Reject high-confidence credentials before any external API call."""
     checks = (
         (
             r"(?i)https?://\S*[?&](?:token|api[_-]?key|access[_-]?key|code)=",
-            "包含带令牌或密钥的链接",
+            "the text contains a URL with a token or key",
         ),
         (
             r"(?i)\b(?:authorization\s*:\s*)?bearer\s+[A-Za-z0-9._~+/=-]{12,}",
-            "包含访问令牌",
+            "the text contains an access token",
         ),
         (
             r"(?i)\bsk-[A-Za-z0-9_-]{16,}\b|\bAIza[A-Za-z0-9_-]{20,}\b",
-            "包含疑似 API 密钥",
+            "the text contains a likely API key",
         ),
         (
             r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----",
-            "包含私钥",
+            "the text contains a private key",
         ),
         (
             r"(?i)(?:password|passwd|api[ _-]?key|access[ _-]?token|"
-            r"refresh[ _-]?token|secret|密码|令牌|密钥)\s*"
-            r"(?:[:=：]|is\b|为|是)\s*[\"'`]?[\w!@#$%^&*+./~=-]{8,}",
-            "包含疑似密码、密钥或令牌",
+            r"refresh[ _-]?token|secret|\u5bc6\u7801|\u4ee4\u724c|\u5bc6\u94a5)\s*"
+            r"(?:[:=\uFF1A]|is\b|\u4e3a|\u662f)\s*[\"'`]?[\w!@#$%^&*+./~=-]{8,}",
+            "the text contains a likely password, key, or token",
         ),
     )
     for pattern, reason in checks:
@@ -414,10 +414,10 @@ def sensitive_input_reason(query: str) -> str | None:
 
 
 def is_short_term(query: str) -> bool:
-    """将单词或简短多语言短语识别为术语，而不是完整句子。"""
+    """Treat a word or compact multilingual phrase as a term, not a sentence."""
     normalized = normalize_query(query)
     words = re.findall(r"\w+(?:['_.+-]\w+)*", normalized, flags=re.UNICODE)
-    sentence_marks = re.search(r"[.!?;。！？；]", normalized)
+    sentence_marks = re.search(r"[.!?;\u3002\uFF01\uFF1F\uFF1B]", normalized)
     return bool(words) and len(words) <= 5 and len(normalized) <= 80 and not sentence_marks
 
 
@@ -432,7 +432,7 @@ def gemini_schema(query: str) -> dict[str, Any]:
                 "minItems": 2 if term else 1,
                 "maxItems": 3 if term else 1,
                 "items": {"type": "STRING"},
-                "description": "术语模式返回2到3个常用中文意思；文本模式只返回一个完整译文",
+                "description": "Terms return 2-3 common Simplified Chinese meanings; text returns one complete translation",
             },
         },
         "required": ["query", "translations"],
@@ -442,31 +442,33 @@ def gemini_schema(query: str) -> dict[str, Any]:
 def translation_prompt(query: str, domain: str) -> str:
     if is_short_term(query):
         task = (
-            "这是单词或短专业术语。只给出按可能性排序的 2～3 个常用中文意思。"
-            "每个元素只能是中文译词或很短的释义，不要解释、不要例句、不要领域标签。"
-            "不同元素必须是真正不同且常用的含义，不要为了凑数添加冷僻含义。"
+            "The input is a word or short technical term. Return only 2-3 common "
+            "Simplified Chinese meanings ordered by likelihood. Each item must be a "
+            "Chinese equivalent or very short definition, without explanations, examples, "
+            "or domain labels. Meanings must be genuinely distinct and common."
         )
     else:
         task = (
-            "这是完整句子、段落或文章。只给出一份完整、连贯、准确的简体中文译文。"
-            "不得遗漏任何一句，包括输入的最后一行。保持原文信息和段落逻辑，"
-            "不要解释、不要总结、不要列出多个版本，也不要添加原文没有的内容。"
-            "translations 数组必须且只能包含这一个完整译文。"
+            "The input is a complete sentence, paragraph, or document. Return exactly one "
+            "complete, coherent, and accurate Simplified Chinese translation. Do not omit "
+            "any sentence or the final line. Preserve all information and paragraph logic. "
+            "Do not explain, summarize, offer alternatives, or add content. The translations "
+            "array must contain exactly one complete translation."
         )
     return f"""
-你是一名严谨、简洁的多语言专业翻译。自动识别用户输入的语言，并翻译为简体中文。
-使用业界通行译名，并优先采用用户指定领域的语境。如果输入已经是中文，保持原意并只做必要的规范化。
-只输出一个合法 JSON 对象，不要输出 Markdown 或 JSON 之外的文字。
+You are a precise and concise multilingual professional translator. Detect the input language automatically and translate it into Simplified Chinese.
+Use established industry terminology and prioritize the user's preferred domain. If the input is already Chinese, preserve its meaning and normalize only when necessary.
+Output one valid JSON object and no Markdown or other text.
 
-JSON 必须使用这个结构：
+Use exactly this JSON structure:
 {{
-  "query": "原始输入",
-  "translations": ["中文结果"]
+  "query": "original input",
+  "translations": ["Simplified Chinese result"]
 }}
 
-具体任务：{task}
-用户偏好的专业领域：{domain or "未指定，按常见语境综合判断"}
-用户输入：{query}
+Task: {task}
+Preferred professional domain: {domain or "not specified; use the most common context"}
+Input: {query}
 """.strip()
 
 
@@ -478,16 +480,16 @@ def parse_model_json(text: str) -> dict[str, Any]:
     try:
         result = json.loads(content)
     except json.JSONDecodeError as exc:
-        # 部分兼容模型会无视指令添加简短前言，因此尝试提取其中的对象。
+        # Some compatible models add a short preface despite the instruction.
         start, end = content.find("{"), content.rfind("}")
         if start < 0 or end <= start:
-            raise RuntimeError("模型没有返回可解析的 JSON") from exc
+            raise RuntimeError("the model did not return parseable JSON") from exc
         try:
             result = json.loads(content[start : end + 1])
         except json.JSONDecodeError as nested:
-            raise RuntimeError("模型返回的 JSON 格式不完整") from nested
+            raise RuntimeError("the model returned incomplete JSON") from nested
     if not isinstance(result, dict):
-        raise RuntimeError("模型返回的结果不是 JSON 对象")
+        raise RuntimeError("the model result is not a JSON object")
     return result
 
 
@@ -506,7 +508,7 @@ def validate_model_result(
         if len(translations) >= limit:
             break
     if not translations:
-        raise RuntimeError("模型返回的翻译内容为空")
+        raise RuntimeError("the model returned an empty translation")
     result["query"] = query
     result["kind"] = "term" if is_short_term(query) else "text"
     result["translations"] = translations
@@ -519,7 +521,7 @@ def translate_with_gemini(
 ) -> dict[str, Any]:
     api_key = config.get("API_KEY", "").strip()
     if not api_key:
-        raise RuntimeError("尚未配置 Gemini API 密钥")
+        raise RuntimeError("Gemini API key is not configured")
     model = config.get("MODEL", DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
     prompt = translation_prompt(query, domain)
     payload = {
@@ -544,16 +546,16 @@ def translate_with_gemini(
         raise RuntimeError(readable_http_error(exc)) from exc
     except urllib.error.URLError as exc:
         reason = getattr(exc, "reason", exc)
-        raise RuntimeError(f"网络连接失败：{reason}") from exc
+        raise RuntimeError(f"network connection failed: {reason}") from exc
     except TimeoutError as exc:
-        raise RuntimeError("请求超时") from exc
+        raise RuntimeError("request timed out") from exc
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise RuntimeError("Gemini 返回了无法解析的数据") from exc
+        raise RuntimeError("Gemini returned unparseable data") from exc
 
     try:
         candidate = response["candidates"][0]
         if candidate.get("finishReason") not in (None, "STOP"):
-            raise RuntimeError(f"生成被中止：{candidate['finishReason']}")
+            raise RuntimeError(f"generation stopped: {candidate['finishReason']}")
         text = candidate["content"]["parts"][0]["text"]
         result = parse_model_json(text)
     except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
@@ -562,8 +564,8 @@ def translate_with_gemini(
             if isinstance(response, dict)
             else None
         )
-        detail = f"（{block_reason}）" if block_reason else ""
-        raise RuntimeError(f"返回内容结构异常{detail}") from exc
+        detail = f" ({block_reason})" if block_reason else ""
+        raise RuntimeError(f"unexpected response structure{detail}") from exc
 
     return validate_model_result(result, query, f"Gemini ({model})")
 
@@ -581,11 +583,11 @@ def translate_with_openai_compatible(
     api_key = config.get("API_KEY", "").strip()
     base_url = config.get("BASE_URL", "").strip()
     model = config.get("MODEL", "").strip()
-    provider_name = config.get("PROVIDER_NAME", "大模型").strip() or "大模型"
+    provider_name = config.get("PROVIDER_NAME", "AI provider").strip() or "AI provider"
     if not api_key:
-        raise RuntimeError(f"尚未配置 {provider_name} API 密钥")
+        raise RuntimeError(f"{provider_name} API key is not configured")
     if not base_url or not model:
-        raise RuntimeError("API 基础地址或模型名称未配置")
+        raise RuntimeError("API base URL or model name is not configured")
 
     prompt = translation_prompt(query, domain)
     payload: dict[str, Any] = {
@@ -593,7 +595,7 @@ def translate_with_openai_compatible(
         "messages": [
             {
                 "role": "system",
-                "content": "你是严谨、简洁的多语言专业翻译，自动识别语言并译为简体中文，只返回合法 JSON。",
+                "content": "You are a precise multilingual translator. Detect the language, translate into Simplified Chinese, and return valid JSON only.",
             },
             {"role": "user", "content": prompt},
         ],
@@ -602,7 +604,8 @@ def translate_with_openai_compatible(
         "response_format": {"type": "json_object"},
     }
     if config.get("PROVIDER") in ("deepseek", "zhipu"):
-        # 翻译不需要冗长推理轨迹；内置服务支持关闭思考以降低延迟。
+        # Translation does not need a long reasoning trace. Both built-in
+        # providers support this switch; disabling it improves latency.
         payload["thinking"] = {"type": "disabled"}
     url = chat_completions_url(base_url)
     headers = {"Authorization": f"Bearer {api_key}"}
@@ -612,7 +615,7 @@ def translate_with_openai_compatible(
                 url, method="POST", data=payload, headers=headers, timeout=40
             )
         except urllib.error.HTTPError as exc:
-            # 少数 OpenAI 兼容服务没有实现 JSON 模式，因此在参数错误时重试。
+            # A few OpenAI-compatible providers do not implement JSON mode.
             if exc.code != 400 or config.get("PROVIDER") == "deepseek":
                 raise
             payload.pop("response_format", None)
@@ -625,27 +628,27 @@ def translate_with_openai_compatible(
         raise RuntimeError(readable_http_error(exc)) from exc
     except urllib.error.URLError as exc:
         reason = getattr(exc, "reason", exc)
-        raise RuntimeError(f"网络连接失败：{reason}") from exc
+        raise RuntimeError(f"network connection failed: {reason}") from exc
     except TimeoutError as exc:
-        raise RuntimeError("请求超时") from exc
+        raise RuntimeError("request timed out") from exc
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise RuntimeError(f"{provider_name} 返回了无法解析的数据") from exc
+        raise RuntimeError(f"{provider_name} returned unparseable data") from exc
 
     try:
         message = response["choices"][0]["message"]
         content = message.get("content", "")
         if not isinstance(content, str) or not content.strip():
-            raise RuntimeError("模型返回内容为空")
+            raise RuntimeError("the model returned empty content")
         result = parse_model_json(content)
     except (KeyError, IndexError, TypeError) as exc:
-        raise RuntimeError("返回内容不符合 OpenAI Chat Completions 格式") from exc
+        raise RuntimeError("the response does not match the OpenAI Chat Completions format") from exc
     return validate_model_result(result, query, f"{provider_name} ({model})")
 
 
 def provider_label(config: dict[str, str]) -> str:
     provider = config.get("PROVIDER", "")
     if provider == "none" or not provider:
-        return "免费备用翻译"
+        return "Keyless fallback"
     return config.get("PROVIDER_NAME") or (
         "Gemini" if provider == "gemini" else provider
     )
@@ -659,11 +662,11 @@ def translate_with_configured_model(
         return translate_with_gemini(query, domain, config)
     if provider not in ("", "none"):
         return translate_with_openai_compatible(query, domain, config)
-    raise RuntimeError("尚未配置大模型")
+    raise RuntimeError("no AI provider is configured")
 
 
 def mymemory_lookup(text: str) -> dict[str, Any]:
-    # 公共接口限制查询不超过 500 字节，截断时不能破坏 UTF-8 字符。
+    # The public API has a 500-byte query limit. Avoid cutting a UTF-8 sequence.
     encoded = text.encode("utf-8")
     if len(encoded) > 480:
         encoded = encoded[:480]
@@ -688,13 +691,13 @@ def mymemory_lookup(text: str) -> dict[str, Any]:
 
 
 def google_translate_lookup(text: str) -> dict[str, Any]:
-    """调用谷歌公开网页翻译接口并自动检测输入语言。"""
+    """Use Google's public web translation endpoint with language detection."""
     params = urllib.parse.urlencode(
         {"client": "gtx", "sl": "auto", "tl": "zh-CN", "dt": "t", "q": text}
     )
     response = json_request(f"{GOOGLE_TRANSLATE_URL}?{params}", timeout=15)
     if not isinstance(response, list) or not response or not response[0]:
-        raise RuntimeError("谷歌免费翻译返回内容为空")
+        raise RuntimeError("Google fallback returned an empty translation")
     translated = "".join(
         str(segment[0])
         for segment in response[0]
@@ -748,10 +751,10 @@ def safe_mymemory(text: str) -> tuple[dict[str, Any] | None, str | None]:
     try:
         return mymemory_lookup(text), None
     except urllib.error.HTTPError as exc:
-        return None, f"MyMemory 接口错误 {exc.code}"
+        return None, f"MyMemory HTTP {exc.code}"
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         return None, f"MyMemory {exc}"
-    except Exception as exc:  # 即使接口返回异常结构，也要让后续降级流程继续。
+    except Exception as exc:  # Keep fallback available even on unusual API data.
         return None, f"MyMemory {type(exc).__name__}: {exc}"
 
 
@@ -759,26 +762,26 @@ def safe_google_translate(text: str) -> tuple[dict[str, Any] | None, str | None]
     try:
         return google_translate_lookup(text), None
     except urllib.error.HTTPError as exc:
-        return None, f"谷歌免费翻译接口错误 {exc.code}"
+        return None, f"Google fallback HTTP {exc.code}"
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        return None, f"谷歌免费翻译 {exc}"
+        return None, f"Google fallback {exc}"
     except Exception as exc:
-        return None, f"谷歌免费翻译 {type(exc).__name__}：{exc}"
+        return None, f"Google fallback {type(exc).__name__}: {exc}"
 
 
 def safe_dictionary(word: str) -> tuple[dict[str, Any] | None, str | None]:
     try:
         return dictionary_lookup(word), None
     except urllib.error.HTTPError as exc:
-        return None, f"免费词典接口错误 {exc.code}"
+        return None, f"Free Dictionary HTTP {exc.code}"
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        return None, f"免费词典 {exc}"
+        return None, f"Free Dictionary {exc}"
     except Exception as exc:
-        return None, f"免费词典 {type(exc).__name__}：{exc}"
+        return None, f"Free Dictionary {type(exc).__name__}: {exc}"
 
 
 def split_utf8_chunks(text: str, max_bytes: int = 450) -> list[str]:
-    """在不丢词的前提下分块，使内容不超过公共备用接口限制。"""
+    """Split without dropping words so the public fallback API stays in limit."""
     chunks: list[str] = []
     current = ""
     for token in re.findall(r"\S+\s*", text):
@@ -810,14 +813,14 @@ def translate_with_fallback(query: str) -> dict[str, Any]:
         responses = list(pool.map(safe_google_translate, chunks))
     failures = [error for translated, error in responses if not translated]
     if failures:
-        # 谷歌不可用时，继续使用无需密钥的 MyMemory 作为第二级备用。
+        # MyMemory remains a second keyless backup when Google is unavailable.
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=min(4, len(chunks))
         ) as pool:
             responses = list(pool.map(safe_mymemory, chunks))
         failures = [error for translated, error in responses if not translated]
         if failures:
-            raise RuntimeError("；".join(error or "未知错误" for error in failures))
+            raise RuntimeError("; ".join(error or "unknown error" for error in failures))
     translated_parts = [
         str(translated.get("translation", "")).strip()
         for translated, _ in responses
@@ -836,12 +839,12 @@ def translate_with_fallback(query: str) -> dict[str, Any]:
         if len(translations) >= (3 if is_short_term(query) else 1):
             break
     if not translations:
-        raise RuntimeError("免费翻译服务没有返回有效译文")
+        raise RuntimeError("the fallback service returned no valid translation")
     return {
         "query": query,
         "kind": "term" if is_short_term(query) else "text",
         "translations": translations,
-        "source": "免费机器翻译备用服务",
+        "source": "Keyless machine-translation fallback",
     }
 
 
@@ -850,7 +853,7 @@ def display_result(result: dict[str, Any]) -> None:
     translations = result.get("translations", [])
     if result.get("kind") == "term":
         print(color(result.get("query", ""), "1;36"))
-        print(color("；".join(translations), "1;32"))
+        print(color("; ".join(translations), "1;32"))
     else:
         print(color(translations[0] if translations else "", "1;32"))
 
@@ -858,18 +861,18 @@ def display_result(result: dict[str, Any]) -> None:
 def translate_machine(
     query: str, domain: str, config: dict[str, str]
 ) -> tuple[dict[str, Any], int]:
-    """为编辑器和桌面集成执行翻译，不直接输出交互界面文字。"""
+    """Translate for editor/desktop integrations and emit no human UI text."""
     query = normalize_query(query)
     if not query:
-        return {"ok": False, "error": "没有收到可翻译的文字"}, 1
+        return {"ok": False, "error": "No text was provided for translation"}, 1
     sensitive_reason = sensitive_input_reason(query)
     if sensitive_reason:
         return {
             "ok": False,
-            "error": f"已阻止翻译：{sensitive_reason}。内容未发送给 AI，也未保存。",
+            "error": f"Translation blocked: {sensitive_reason}. The content was not sent or saved.",
         }, 1
     if len(query) > 12000:
-        return {"ok": False, "error": "输入过长：目前最多支持 12000 个字符"}, 1
+        return {"ok": False, "error": "Input too long: the current limit is 12,000 characters"}, 1
 
     label = provider_label(config)
     warnings: list[str] = []
@@ -878,23 +881,23 @@ def translate_machine(
         try:
             result = translate_with_configured_model(query, domain, config)
         except RuntimeError as exc:
-            warnings.append(f"{label} 翻译失败：{exc}")
+            warnings.append(f"{label} translation failed: {exc}")
             try:
                 result = translate_with_fallback(query)
             except RuntimeError as fallback_exc:
                 return {
                     "ok": False,
-                    "error": f"备用翻译也失败：{fallback_exc}",
+                    "error": f"Fallback translation also failed: {fallback_exc}",
                     "warnings": warnings,
                 }, 1
     else:
-        warnings.append("尚未配置大模型，已使用免费备用翻译")
+        warnings.append("No AI provider is configured; keyless fallback was used")
         try:
             result = translate_with_fallback(query)
         except RuntimeError as fallback_exc:
             return {
                 "ok": False,
-                "error": f"备用翻译失败：{fallback_exc}",
+                "error": f"Fallback translation failed: {fallback_exc}",
                 "warnings": warnings,
             }, 1
 
@@ -905,7 +908,7 @@ def translate_machine(
         "query": result.get("query", query),
         "kind": result.get("kind", "text"),
         "translations": translations,
-        "translation": "；".join(translations),
+        "translation": "; ".join(translations),
         "source": result.get("source", ""),
         "saved": archive.saved,
         "archive_status": archive.status,
@@ -923,13 +926,13 @@ def translate_and_save(query: str, domain: str, config: dict[str, str]) -> bool:
     if sensitive_reason:
         print(
             color(
-                f"已阻止翻译：{sensitive_reason}。内容未发送给 AI，也未保存。",
+                f"Translation blocked: {sensitive_reason}. The content was not sent or saved.",
                 "31",
             )
         )
         return False
     if len(query) > 12000:
-        print(color("输入过长：目前最多支持 12000 个字符。", "31"))
+        print(color("Input too long: the current limit is 12,000 characters.", "31"))
         return False
 
     label = provider_label(config)
@@ -937,35 +940,35 @@ def translate_and_save(query: str, domain: str, config: dict[str, str]) -> bool:
     provider = config.get("PROVIDER", "")
     if provider not in ("", "none") and config.get("API_KEY"):
         try:
-            print(color(f"{label} 正在分析…", "2"))
+            print(color(f"{label} is analyzing...", "2"))
             result = translate_with_configured_model(query, domain, config)
         except RuntimeError as exc:
             model_error = str(exc)
-            print(color(f"{label} 翻译失败：{model_error}", "31"))
-            print(color("正在使用免费备用翻译…", "33"))
+            print(color(f"{label} translation failed: {model_error}", "31"))
+            print(color("Using keyless fallback translation...", "33"))
             try:
                 result = translate_with_fallback(query)
             except RuntimeError as fallback_exc:
-                print(color(f"备用翻译也失败：{fallback_exc}", "31"))
+                print(color(f"Fallback translation also failed: {fallback_exc}", "31"))
                 return False
     else:
-        print(color("正在使用免费备用翻译…", "33"))
+        print(color("Using keyless fallback translation...", "33"))
         try:
             result = translate_with_fallback(query)
         except RuntimeError as fallback_exc:
-            print(color(f"备用翻译也失败：{fallback_exc}", "31"))
+            print(color(f"Fallback translation failed: {fallback_exc}", "31"))
             return False
 
     display_result(result)
     archive = archive_result(result, config)
     if archive.status == "saved":
-        print(color(f"✓ 已保存到 {archive.path}", "32"))
+        print(color(f"✓ Saved to {archive.path}", "32"))
     elif archive.status == "duplicate":
-        print(color("↪ 已存在相同记录，不重复保存。", "33"))
+        print(color("↪ An identical entry already exists; not saved again.", "33"))
     elif archive.status == "path_missing":
-        print(color("未保存：请先使用 :save-path 设置生词本路径。", "33"))
+        print(color("Not saved: set a vocabulary path with :save-path first.", "33"))
     elif archive.status == "filtered":
-        print(color("本条不符合当前保存类型，未保存。", "33"))
+        print(color("Not saved because this entry does not match the current policy.", "33"))
     return True
 
 
@@ -973,7 +976,7 @@ def setup_readline() -> None:
     try:
         import readline
 
-        # 将整段终端多行粘贴保留在同一个可编辑输入缓冲区中。
+        # Keep an entire multi-line terminal paste in one editable input buffer.
         readline.parse_and_bind("set enable-bracketed-paste on")
         if HISTORY_FILE.exists():
             readline.read_history_file(HISTORY_FILE)
@@ -993,12 +996,13 @@ def save_history() -> None:
 
 
 def read_interactive_input(prompt: str) -> str:
-    """读取一次查询，并吸收同一次终端粘贴中到达的后续行。"""
+    """Read one query and absorb lines that arrived in the same terminal paste."""
     first = input(prompt)
     if not sys.stdin.isatty():
         return first
     lines = [first]
-    # 现代终端由括号粘贴模式处理；短暂排空用于兼容逐行提交粘贴的终端。
+    # Bracketed paste handles modern terminals. This short drain is a fallback
+    # for terminals that submit each pasted line separately.
     while True:
         try:
             ready, _, _ = select.select([sys.stdin], [], [], 0.12)
@@ -1014,7 +1018,7 @@ def read_interactive_input(prompt: str) -> str:
 
 
 def read_paste_block() -> str:
-    print("请粘贴多行文本；完成后另起一行输入 :end")
+    print("Paste multiline text, then enter :end on a separate line.")
     lines: list[str] = []
     while True:
         try:
@@ -1028,27 +1032,27 @@ def read_paste_block() -> str:
 
 
 HELP = """
-直接输入任意语言的单词、专业术语、短语、句子或文章并回车，结果统一为简体中文。
-可直接粘贴多行文本；如终端仍会拆行，先输入 :paste，最后输入 :end。
+Enter a word, technical term, phrase, sentence, or document in any language.
+The result is always Simplified Chinese. For reliable multiline input, use :paste and finish with :end.
 
-命令：
-  :paste           可靠的多行粘贴模式，以单独一行 :end 结束
-  :domain <领域>  设置当前专业领域，例如 :domain embedded systems
-  :domain          查看当前领域
-  :provider        查看当前大模型和模型名称
-  :free-api        查看免费 API 密钥获取方法
-  :save             查看当前保存设置
-  :save off|all|terms|texts  设置保存类型
-  :save-path <路径> 设置 Markdown 生词本路径
-  :settings         交互配置生词本
-  :setup           配置或切换大模型
-  :file            显示 Markdown 生词本路径
-  :help            显示帮助
-  :quit            退出（也可以按 Ctrl-D）
+Commands:
+  :paste           Start reliable multiline mode; finish with :end on its own line
+  :domain <field>  Set a professional domain, for example :domain embedded systems
+  :domain          Show the current domain
+  :provider        Show the current provider and model
+  :free-api        Show free API key registration help
+  :save            Show the current vocabulary settings
+  :save off|all|terms|texts  Set the save policy
+  :save-path <path> Set the Markdown vocabulary path
+  :settings        Configure vocabulary storage interactively
+  :setup           Configure or switch providers
+  :file            Show the Markdown vocabulary path
+  :help            Show help
+  :quit            Exit (Ctrl-D also works)
 
-命令行选项：
-  sdf --version    显示版本
-  sdf --doctor     安全检查运行环境和配置
+Command-line options:
+  sdf --version    Show the version
+  sdf --doctor     Safely inspect the environment and configuration
 """.strip()
 
 
@@ -1063,17 +1067,17 @@ def interactive() -> int:
 
     domain = config.get("TRANSLATION_DOMAIN", "")
     setup_readline()
-    print(color("多语言专业翻译助手", "1;36"))
-    print("输入任意语言即可翻译为中文；输入 :help 查看命令，:quit 退出。")
+    print(color("Multilingual professional translator", "1;36"))
+    print("Enter text in any language to translate it into Chinese. Use :help for commands and :quit to exit.")
     if config.get("PROVIDER") not in ("", "none"):
         print(
-            f"当前模型：{provider_label(config)} / "
-            f"{config.get('MODEL', '未指定')}"
+            f"Current model: {provider_label(config)} / "
+            f"{config.get('MODEL', 'not specified')}"
         )
     if domain:
-        print(f"当前领域：{domain}")
+        print(f"Current domain: {domain}")
     if config.get("PROVIDER") in ("", "none") or not config.get("API_KEY"):
-        print(color("大模型未配置，本次会使用免费备用翻译。", "33"))
+        print(color("No AI provider is configured; keyless fallback will be used.", "33"))
 
     while True:
         try:
@@ -1082,7 +1086,7 @@ def interactive() -> int:
             print()
             break
         except KeyboardInterrupt:
-            print("\n输入 :quit 退出。")
+            print("\nEnter :quit to exit.")
             continue
         value = raw.strip()
         if not value:
@@ -1097,7 +1101,7 @@ def interactive() -> int:
             print(HELP)
             continue
         if value == ":file":
-            print(vocabulary_path(config) or "尚未设置生词本路径")
+            print(vocabulary_path(config) or "Vocabulary path is not set")
             continue
         if value == ":settings":
             if configure_storage():
@@ -1109,22 +1113,22 @@ def interactive() -> int:
             continue
         if value == ":provider":
             if config.get("PROVIDER") in ("", "none"):
-                print("当前模型：未配置（只使用免费备用翻译）")
+                print("Current model: not configured (keyless fallback only)")
             else:
                 print(
-                    f"当前模型：{provider_label(config)} / "
-                    f"{config.get('MODEL', '未指定')}"
+                    f"Current model: {provider_label(config)} / "
+                    f"{config.get('MODEL', 'not specified')}"
                 )
             continue
         if value == ":free-api":
             print(free_provider_help())
             continue
         if value == ":domain":
-            print(f"当前领域：{domain or '未指定'}")
+            print(f"Current domain: {domain or 'not specified'}")
             continue
         if value.startswith(":domain "):
             domain = normalize_query(value[len(":domain ") :])
-            print(f"当前领域已设为：{domain or '未指定'}")
+            print(f"Current domain set to: {domain or 'not specified'}")
             continue
         if value == ":save":
             print(storage_summary(config))
@@ -1132,26 +1136,26 @@ def interactive() -> int:
         if value.startswith(":save-path "):
             path = set_vocabulary_path(value[len(":save-path ") :])
             config = load_config()
-            print(f"生词本路径已设为：{path}")
+            print(f"Vocabulary path set to: {path}")
             continue
         if value == ":save-path":
-            print(vocabulary_path(config) or "尚未设置生词本路径")
+            print(vocabulary_path(config) or "Vocabulary path is not set")
             continue
         if value.startswith(":save "):
             mode = set_save_mode(value[len(":save ") :])
             if mode is None:
-                print("用法：:save off|all|terms|texts")
+                print("Usage: :save off|all|terms|texts")
             else:
                 config = load_config()
-                print(f"保存模式已设为：{mode}")
+                print(f"Save mode set to: {mode}")
             continue
         if value.startswith(":"):
-            print("未知命令。输入 :help 查看帮助。")
+            print("Unknown command. Enter :help for help.")
             continue
         translate_and_save(value, domain, config)
 
     save_history()
-    print("再见。")
+    print("Goodbye.")
     return 0
 
 
@@ -1159,13 +1163,13 @@ def main() -> int:
     if len(sys.argv) == 1:
         return interactive()
     if sys.argv[1] in ("-h", "--help"):
-        print("用法：sdf [任意语言的单词、术语、短语、句子或文章]")
-        print("不带参数时进入交互模式。")
+        print("Usage: sdf [word, term, phrase, sentence, or document in any language]")
+        print("Run without arguments to enter interactive mode.")
         print()
         print(HELP)
         return 0
     if sys.argv[1] in ("-V", "--version"):
-        print(f"SDF 翻译工具 {__version__}")
+        print(f"SDF Translator {__version__}")
         return 0
     if sys.argv[1] == "--doctor":
         return print_diagnostics(load_config())
@@ -1178,16 +1182,16 @@ def main() -> int:
         return 0 if configure_storage() else 1
     if sys.argv[1] == "--set-save-path":
         if len(sys.argv) < 3:
-            print("用法：sdf --set-save-path <Markdown 文件路径>")
+            print("Usage: sdf --set-save-path <Markdown file path>")
             return 2
-        print(f"生词本路径已设为：{set_vocabulary_path(' '.join(sys.argv[2:]))}")
+        print(f"Vocabulary path set to: {set_vocabulary_path(' '.join(sys.argv[2:]))}")
         return 0
     if sys.argv[1] == "--set-save-mode":
         mode = set_save_mode(sys.argv[2]) if len(sys.argv) == 3 else None
         if mode is None:
-            print("用法：sdf --set-save-mode off|all|terms|texts")
+            print("Usage: sdf --set-save-mode off|all|terms|texts")
             return 2
-        print(f"保存模式已设为：{mode}")
+        print(f"Save mode set to: {mode}")
         return 0
 
     if sys.argv[1] == "--json":
@@ -1195,8 +1199,8 @@ def main() -> int:
         if config.get("HTTPS_PROXY"):
             os.environ["HTTPS_PROXY"] = config["HTTPS_PROXY"]
             os.environ["https_proxy"] = config["HTTPS_PROXY"]
-        # 读取到文件结束可完整保留多行选区（包括最后一行），同时避开命令行
-        # 引号转义和长度限制问题。
+        # Reading until EOF preserves a complete multi-line selection, including
+        # its final line, and avoids command-line quoting/length problems.
         query = sys.stdin.read()
         if not query and len(sys.argv) > 2:
             query = " ".join(sys.argv[2:])
@@ -1213,7 +1217,7 @@ def main() -> int:
     query = " ".join(sys.argv[1:])
     domain = config.get("TRANSLATION_DOMAIN", "")
     if config.get("PROVIDER") in ("", "none") or not config.get("API_KEY"):
-        print("提示：尚未配置大模型。运行 sdf --setup 可配置。")
+        print("Note: no AI provider is configured. Run sdf --setup to configure one.")
     return 0 if translate_and_save(query, domain, config) else 1
 
 

@@ -14,7 +14,7 @@ require_safe_path() {
   local target=$1
   case "$target" in
     ""|/|"$HOME")
-      echo "拒绝删除不安全的路径：$target" >&2
+      echo "Refusing unsafe removal path: $target" >&2
       exit 2
       ;;
   esac
@@ -34,7 +34,7 @@ if "$purge"; then
   rm -rf "$config_home/sdf-translator" \
     "$data_home/sdf-translator" \
     "$state_home/sdf-translator"
-  echo "SDF 翻译工具及其用户数据已删除。"
+  echo "SDF Translator and user data removed."
 else
-  echo "SDF 翻译工具已删除；用户配置和生词本已保留。"
+  echo "SDF Translator removed; user configuration and vocabulary were preserved."
 fi

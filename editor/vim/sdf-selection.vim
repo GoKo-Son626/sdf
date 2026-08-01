@@ -1,4 +1,4 @@
-" 将 Vim 可视选择同步到 Wayland 主选区。
+" Synchronize Vim's Visual selection with Wayland's primary selection.
 if exists('g:loaded_sdf_selection') || get(g:, 'sdf_selection_sync', 1) == 0
   finish
 endif

@@ -1,40 +1,54 @@
-# Arch / AUR 打包
+# Arch Linux and AUR packaging
 
-`PKGBUILD` 遵循 Arch 版本控制系统软件包规范，并将 Git 最新修订安装为 `sdf-translator-git`。
+The included `PKGBUILD` follows the Arch VCS package format and installs the latest Git revision as `sdf-translator-git`. The upstream source is <https://github.com/GoKo-Son626/sdf>.
 
-上游源码地址已经配置为 <https://github.com/GoKo-Son626/sdf>。
+The GitHub repository and the AUR package repository are separate Git repositories. Do not push the entire project history to AUR.
 
-首次发布 AUR 前：
+## One-time AUR setup
 
-1. 在 <https://aur.archlinux.org/register> 注册 AUR 账户，并在账户设置中添加本机 SSH 公钥。
-2. 确认 `sdf-translator-git` 名称尚未被占用，然后克隆独立 AUR 仓库：
-
-   ```bash
-   git clone ssh://aur@aur.archlinux.org/sdf-translator-git.git
-   ```
-
-3. 将本目录 `PKGBUILD` 顶部的维护者注释替换为真实 AUR 维护者姓名和邮箱。
-4. 在本目录构建并检查软件包：
+1. Register at <https://aur.archlinux.org/register>.
+2. Add an SSH public key to the AUR account. A dedicated key is recommended.
+3. Confirm that the intended package base is available.
+4. Clone its AUR repository. An empty-repository warning is expected for a new package:
 
    ```bash
-   makepkg -Ccfsi
-   namcap PKGBUILD sdf-translator-git-*.pkg.tar.zst
+   git -c init.defaultBranch=master clone \
+     ssh://aur@aur.archlinux.org/sdf-translator-git.git
    ```
 
-5. 每次修改 `PKGBUILD` 元数据后重新生成：
+5. Replace the maintainer comment in `PKGBUILD` with the real maintainer name and email.
 
-   ```bash
-   makepkg --printsrcinfo > .SRCINFO
-   ```
+## Validate before publishing
 
-6. 将 `PKGBUILD` 和 `.SRCINFO` 复制到刚才克隆的 AUR 仓库，然后提交并推送：
+From this directory, build and inspect the package:
 
-   ```bash
-   git add PKGBUILD .SRCINFO
-   git commit -m "首次发布 sdf-translator-git"
-   git push
-   ```
+```bash
+makepkg -Ccfsi
+namcap PKGBUILD sdf-translator-git-*.pkg.tar.zst
+```
 
-7. 发布后运行 `yay -S sdf-translator-git` 做一次从 AUR 安装的最终验证。
+Regenerate metadata whenever `PKGBUILD` metadata changes:
 
-本项目普通源码仓库的 `main` 分支与 AUR 软件包仓库是两个独立的 Git 仓库。
+```bash
+makepkg --printsrcinfo > .SRCINFO
+```
+
+Review both files and confirm they contain no credentials or personal paths.
+
+## Publish
+
+Copy only `PKGBUILD` and `.SRCINFO` into the separately cloned AUR repository, then:
+
+```bash
+git add PKGBUILD .SRCINFO
+git commit -m "Initial submission"
+git push
+```
+
+AUR accepts package updates on its `master` branch. After publishing, verify the user path from a clean directory:
+
+```bash
+yay -S sdf-translator-git
+```
+
+For a VCS package, do not publish commits that only refresh `pkgver`; `pkgver()` computes the current upstream revision during the build. Publish an AUR update when packaging metadata or the build process changes.

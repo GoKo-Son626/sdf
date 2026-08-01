@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""通过全局快捷键翻译当前 Wayland 主选区。"""
+"""Translate the current Wayland primary selection from a global hotkey."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def notify(
     args = [
         "notify-send",
         f"--urgency={urgency}",
-        "--app-name=全局翻译",
+        "--app-name=SDF Translator",
     ]
     if timeout_ms is not None:
         args.append(f"--expire-time={timeout_ms}")
@@ -76,8 +76,8 @@ def preview(text: str, limit: int = 320) -> str:
 
 def confirm_clipboard(text: str) -> bool:
     message = (
-        "没有检测到鼠标选中的文字。\n\n"
-        "是否翻译普通剪贴板中的以下内容？\n\n"
+        "No selected text was detected.\n\n"
+        "Translate the following regular clipboard content instead?\n\n"
         f"{preview(text)}"
     )
     try:
@@ -85,9 +85,9 @@ def confirm_clipboard(text: str) -> bool:
             [
                 "zenity",
                 "--question",
-                "--title=全局翻译",
-                "--ok-label=翻译",
-                "--cancel-label=取消",
+                "--title=SDF Translator",
+                "--ok-label=Translate",
+                "--cancel-label=Cancel",
                 "--width=520",
                 f"--text={message}",
             ],
@@ -102,13 +102,13 @@ def confirm_clipboard(text: str) -> bool:
 def select_input() -> tuple[str, str]:
     selected = clipboard_text(primary=True)
     if selected:
-        return selected, "鼠标选区"
+        return selected, "primary selection"
 
     copied = clipboard_text(primary=False)
     if not copied:
         return "", ""
     if confirm_clipboard(copied):
-        return copied, "剪贴板"
+        return copied, "clipboard"
     return "", ""
 
 
@@ -124,9 +124,9 @@ def translate(text: str) -> dict[str, object]:
 
 
 def translation_content(query: str, translation: str, source: str) -> str:
-    content = f"原文\n{query}\n\n翻译\n{translation}"
+    content = f"Original\n{query}\n\nTranslation\n{translation}"
     if source:
-        content += f"\n\n模型：{source}"
+        content += f"\n\nModel: {source}"
     return content
 
 
@@ -151,10 +151,10 @@ def show_translation_result(
             [
                 "zenity",
                 "--text-info",
-                "--title=翻译结果",
+                "--title=Translation Result",
                 "--width=760",
                 "--height=480",
-                "--ok-label=关闭",
+                "--ok-label=Close",
                 "--font=Sans 12",
                 f"--filename={temp_path}",
             ],
@@ -171,17 +171,17 @@ def show_translation_result(
 def show_term_result(query: str, translation: str, source: str) -> None:
     message = translation
     if source:
-        message += f"\n\n模型：{source}"
-    notify(query or "翻译结果", message, timeout_ms=12000)
+        message += f"\n\nModel: {source}"
+    notify(query or "Translation Result", message, timeout_ms=12000)
 
 
 def show_result(payload: dict[str, object]) -> None:
     if not payload.get("ok"):
         warnings = payload.get("warnings") or []
         warning_text = "\n".join(str(item) for item in warnings)
-        error = str(payload.get("error") or "翻译失败")
+        error = str(payload.get("error") or "Translation failed")
         message = f"{warning_text}\n{error}".strip()
-        title = "已阻止翻译" if error.startswith("已阻止翻译：") else "翻译失败"
+        title = "Translation Blocked" if error.startswith("Translation blocked:") else "Translation Failed"
         notify(title, message, "critical")
         return
 
@@ -190,7 +190,7 @@ def show_result(payload: dict[str, object]) -> None:
     source = str(payload.get("source") or "")
     warnings = payload.get("warnings") or []
     if warnings:
-        notify("翻译备用提示", "\n".join(str(item) for item in warnings))
+        notify("Fallback Notice", "\n".join(str(item) for item in warnings))
 
     if payload.get("kind") == "term":
         show_term_result(query, translation, source)
@@ -204,20 +204,20 @@ def main() -> int:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            notify("正在翻译", "已有一个翻译任务正在运行")
+            notify("Translation in Progress", "Another translation task is already running")
             return 0
 
         text, _ = select_input()
         if not text:
             notify(
-                "没有检测到文字",
-                "请先用鼠标选中要翻译的文字；扫描版 PDF 需要使用 OCR。",
+                "No Text Detected",
+                "Select text with the mouse first. Scanned PDFs require OCR.",
             )
             return 1
         if len(text) > MAX_INPUT_CHARS:
             notify(
-                "选中文字过长",
-                f"当前最多支持 {MAX_INPUT_CHARS} 个字符，请缩小选择范围。",
+                "Selection Too Long",
+                f"The current limit is {MAX_INPUT_CHARS} characters. Select a smaller range.",
                 "critical",
             )
             return 1

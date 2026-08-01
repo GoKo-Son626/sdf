@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class EditorPluginTests(unittest.TestCase):
-    @unittest.skipUnless(shutil.which("nvim"), "未安装 Neovim")
+    @unittest.skipUnless(shutil.which("nvim"), "Neovim is not installed")
     def test_neovim_plugin_loads(self) -> None:
         subprocess.run(
             [
@@ -24,7 +24,7 @@ class EditorPluginTests(unittest.TestCase):
             timeout=10,
         )
 
-    @unittest.skipUnless(shutil.which("vim"), "未安装 Vim")
+    @unittest.skipUnless(shutil.which("vim"), "Vim is not installed")
     def test_vim_plugin_loads(self) -> None:
         subprocess.run(
             [

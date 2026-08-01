@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""兼容旧用法的 sdf 开发入口。"""
+"""Backward-compatible development entry point for the sdf command."""
 
 from pathlib import Path
 import sys

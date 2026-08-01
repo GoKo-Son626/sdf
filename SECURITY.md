@@ -1,22 +1,22 @@
-# 安全策略
+# Security Policy
 
-## 支持范围
+## Supported versions
 
-项目目前仍处于早期开发阶段，只对 `main` 分支最新版本提供安全修复。旧提交和第三方修改版本不单独维护。
+SDF Translator is still in early development. Security fixes are provided only for the latest revision on `main`; older commits and third-party forks are not maintained separately.
 
-## 报告漏洞
+## Reporting a vulnerability
 
-优先使用 GitHub 仓库 Security 页面中的私密漏洞报告功能。若该入口暂不可用，请创建一个不包含密钥、原文、利用代码或其他敏感细节的普通 Issue，仅说明需要私下联系维护者。
+Please use GitHub private vulnerability reporting from the repository's Security page. If that option is unavailable, open a minimal issue that contains no credentials, source documents, exploit code, or other sensitive details and ask the maintainer for a private contact channel.
 
-报告中可以包含：
+A useful report may include:
 
-- 受影响的版本或提交；
-- 问题类型和潜在影响；
-- 不含真实凭据或个人数据的最小复现步骤；
-- 建议的缓解或修复方向。
+- the affected version or commit;
+- the issue category and potential impact;
+- minimal reproduction steps using synthetic data;
+- a suggested mitigation or fix.
 
-请勿提交真实 API 密钥、令牌、密码、私钥、代理凭据、私人文档或生词本。收到报告后，维护者会先确认影响范围，再协调修复和公开时间。
+Never submit real API keys, tokens, passwords, private keys, proxy credentials, private documents, or vocabulary files.
 
-## 第三方服务
+## Third-party services
 
-翻译文本会发送给用户自行配置的大模型平台，模型失败时可能发送给免密备用翻译服务。各第三方服务的数据处理方式不由本项目控制，使用者应遵守所在组织的保密规则和相应服务的隐私政策。
+Selected text is sent to the model provider configured by the user. If that request fails, it may be sent to a keyless machine-translation fallback. Those providers control their own data handling. Users remain responsible for following their organization's confidentiality requirements and each provider's privacy policy.

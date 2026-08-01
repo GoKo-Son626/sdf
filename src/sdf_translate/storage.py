@@ -1,4 +1,4 @@
-"""可配置的 Markdown 生词本存储。"""
+"""Configurable Markdown vocabulary storage."""
 
 from __future__ import annotations
 
@@ -51,8 +51,8 @@ def ensure_vocabulary_file(path: Path) -> None:
     if path.exists():
         return
     path.write_text(
-        "# 翻译生词本\n\n"
-        "> 原文一行，翻译一行。由 `sdf` 按用户保存策略自动记录。\n\n",
+        "# Translation Vocabulary\n\n"
+        "> One source line and one translation line, recorded by `sdf` according to your save policy.\n\n",
         encoding="utf-8",
     )
 
@@ -83,7 +83,7 @@ def archive_result(result: dict[str, Any], config: dict[str, str]) -> ArchiveOut
     if already_saved:
         return ArchiveOutcome("duplicate", path)
 
-    translation = "；".join(str(item) for item in result.get("translations", []))
+    translation = "; ".join(str(item) for item in result.get("translations", []))
     lines = [
         f"**{markdown_text(query)}**  ",
         markdown_text(translation),

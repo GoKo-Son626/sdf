@@ -1,17 +1,17 @@
-# Maintainer: SDF 翻译工具贡献者
+# Maintainer: SDF Translator contributors
 pkgname=sdf-translator-git
 pkgver=r13.e653d0a
 pkgrel=1
-pkgdesc="将多语言内容快速翻译为简体中文的全局 AI 翻译工具"
+pkgdesc="Fast global AI translation to Simplified Chinese"
 arch=(any)
 url="https://github.com/GoKo-Son626/sdf"
 license=(MIT)
 depends=(python wl-clipboard zenity libnotify)
 makedepends=(git)
 optdepends=(
-  "niri: 合成器全局快捷键集成"
-  "neovim: 可视选择集成"
-  "vim: 可视选择集成"
+  "niri: compositor hotkey integration"
+  "neovim: Visual selection integration"
+  "vim: Visual selection integration"
 )
 provides=("sdf-translator=$pkgver")
 conflicts=(sdf-translator)
@@ -44,8 +44,6 @@ package() {
     "$pkgdir/usr/share/doc/sdf-translator/README.md"
   install -Dm644 "$project_root/LICENSE" \
     "$pkgdir/usr/share/licenses/sdf-translator/LICENSE"
-  install -Dm644 "$project_root/LICENSE.zh-CN" \
-    "$pkgdir/usr/share/licenses/sdf-translator/LICENSE.zh-CN"
   install -Dm644 "$project_root/config.example" \
     "$pkgdir/usr/share/doc/sdf-translator/config.example"
   install -Dm644 "$project_root/editor/nvim/sdf-selection.lua" \

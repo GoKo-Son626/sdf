@@ -1,14 +1,14 @@
-## 变更说明
+## Summary
 
-<!-- 简要说明改了什么、为什么需要。关联 Issue 时使用 Closes #编号。 -->
+<!-- Briefly explain what changed and why. Use Closes #123 when applicable. -->
 
-## 验证
+## Verification
 
-- [ ] 已运行 `PYTHONPATH=src python -m unittest discover -s tests -v`
-- [ ] 已运行 `python scripts/check_repository.py`
-- [ ] 改变用户行为、安装或配置时已更新 README
-- [ ] 没有提交 API 密钥、个人翻译记录、剪贴板内容或敏感日志
+- [ ] Ran `PYTHONPATH=src python -m unittest discover -s tests -v`
+- [ ] Ran `python scripts/check_repository.py`
+- [ ] Updated the README for user-facing, installation, or configuration changes
+- [ ] Confirmed that no API keys, personal translations, clipboard contents, or sensitive logs are included
 
-## 测试环境
+## Test environment
 
-<!-- 例如：Arch Linux / niri / Neovim 0.12。与桌面无关时可写“不适用”。 -->
+<!-- Example: Arch Linux / niri / Neovim 0.12. Use "Not applicable" for platform-independent changes. -->

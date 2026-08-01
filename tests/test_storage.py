@@ -10,12 +10,12 @@ class StorageTests(unittest.TestCase):
         self.term = {
             "query": "modal",
             "kind": "term",
-            "translations": ["模态", "模式", "形式"],
+            "translations": ["modal", "mode", "form"],
         }
         self.text = {
             "query": "This is a sentence.",
             "kind": "text",
-            "translations": ["这是一个句子。"],
+            "translations": ["This is a translated sentence."],
         }
 
     def test_default_is_disabled_and_creates_no_file(self) -> None:

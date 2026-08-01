@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sdf-translator"
 version = "0.1.0"
-description = "面向 Linux 的快速全局 AI 翻译工具"
+description = "A fast global AI translation tool for Linux"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"

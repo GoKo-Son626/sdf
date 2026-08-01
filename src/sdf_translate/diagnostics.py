@@ -1,4 +1,4 @@
-"""安全检查运行环境、桌面依赖和用户配置。"""
+"""Safely inspect the runtime environment, desktop dependencies, and configuration."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from .storage import save_mode, vocabulary_path
 
 @dataclass(frozen=True)
 class DiagnosticItem:
-    """一项不包含敏感值的诊断结果。"""
+    """One diagnostic result that contains no sensitive values."""
 
     label: str
     detail: str
@@ -30,11 +30,11 @@ def collect_diagnostics(
     environ: Mapping[str, str] | None = None,
     which: Callable[[str], str | None] | None = None,
 ) -> list[DiagnosticItem]:
-    """收集诊断信息，但不执行网络请求，也不显示任何密钥。"""
+    """Collect diagnostics without network requests or secret disclosure."""
     environment = os.environ if environ is None else environ
     find_command = shutil.which if which is None else which
     items = [
-        DiagnosticItem("版本", f"SDF 翻译工具 {__version__}"),
+        DiagnosticItem("Version", f"SDF Translator {__version__}"),
         DiagnosticItem(
             "Python",
             f"{platform.python_version()} / {platform.system()} {platform.machine()}",
@@ -43,27 +43,27 @@ def collect_diagnostics(
 
     wayland = environment.get("WAYLAND_DISPLAY", "").strip()
     if wayland:
-        items.append(DiagnosticItem("图形会话", f"Wayland（{wayland}）"))
+        items.append(DiagnosticItem("Display session", f"Wayland ({wayland})"))
     else:
         items.append(
             DiagnosticItem(
-                "图形会话",
-                "没有检测到 Wayland；终端翻译可用，全局选区功能不可用",
+                "Display session",
+                "Wayland was not detected; terminal translation works, but global selection does not",
                 "warning",
             )
         )
 
     for command, purpose in (
-        ("wl-copy", "写入 Wayland 选区"),
-        ("wl-paste", "读取 Wayland 选区"),
-        ("zenity", "显示长文本结果窗口"),
-        ("notify-send", "显示术语和错误通知"),
+        ("wl-copy", "write the Wayland selection"),
+        ("wl-paste", "read the Wayland selection"),
+        ("zenity", "show long translation results"),
+        ("notify-send", "show term results and errors"),
     ):
         resolved = find_command(command)
         items.append(
             DiagnosticItem(
                 command,
-                f"已安装：{resolved}" if resolved else f"缺失：用于{purpose}",
+                f"Installed: {resolved}" if resolved else f"Missing: required to {purpose}",
                 "ok" if resolved else "error",
             )
         )
@@ -74,28 +74,32 @@ def collect_diagnostics(
         private = permissions & 0o077 == 0
         items.append(
             DiagnosticItem(
-                "配置文件",
-                f"{path}（权限 {permissions:03o}）",
+                "Configuration",
+                f"{path} (mode {permissions:03o})",
                 "ok" if private else "error",
             )
         )
     else:
         items.append(
-            DiagnosticItem("配置文件", f"尚未创建：{path}", "warning")
+            DiagnosticItem("Configuration", f"Not created: {path}", "warning")
         )
 
     provider = config.get("PROVIDER_NAME", "").strip()
     model = config.get("MODEL", "").strip()
     has_key = bool(config.get("API_KEY", "").strip())
     if provider and has_key:
-        items.append(DiagnosticItem("大模型", f"{provider} / {model or '未指定模型'}"))
-    elif provider in ("免费备用翻译",) or config.get("PROVIDER") == "none":
-        items.append(DiagnosticItem("大模型", "已选择仅使用免密备用翻译"))
+        items.append(
+            DiagnosticItem(
+                "AI provider", f"{provider} / {model or 'model not specified'}"
+            )
+        )
+    elif provider in ("Keyless fallback",) or config.get("PROVIDER") == "none":
+        items.append(DiagnosticItem("AI provider", "Keyless fallback only"))
     else:
         items.append(
             DiagnosticItem(
-                "大模型",
-                "未完整配置，将使用免密备用翻译",
+                "AI provider",
+                "Incomplete configuration; keyless fallback will be used",
                 "warning",
             )
         )
@@ -103,24 +107,28 @@ def collect_diagnostics(
     mode = save_mode(config)
     vocabulary = vocabulary_path(config)
     if mode == "off":
-        items.append(DiagnosticItem("生词本", "保存已关闭"))
+        items.append(DiagnosticItem("Vocabulary", "Saving is disabled"))
     elif vocabulary is None:
         items.append(
-            DiagnosticItem("生词本", f"保存模式为 {mode}，但未设置路径", "warning")
+            DiagnosticItem(
+                "Vocabulary",
+                f"Save mode is {mode}, but no path is set",
+                "warning",
+            )
         )
     else:
-        items.append(DiagnosticItem("生词本", f"{mode} → {vocabulary}"))
+        items.append(DiagnosticItem("Vocabulary", f"{mode} -> {vocabulary}"))
     return items
 
 
 def print_diagnostics(config: dict[str, str]) -> int:
-    """打印中文诊断报告；存在缺失桌面依赖时返回非零状态。"""
-    print("SDF 环境诊断")
+    """Print diagnostics and fail when required desktop commands are missing."""
+    print("SDF Environment Diagnostics")
     print("=" * 40)
     items = collect_diagnostics(config)
     symbols = {"ok": "✓", "warning": "!", "error": "✗"}
     for item in items:
-        print(f"{symbols[item.level]} {item.label}：{item.detail}")
+        print(f"{symbols[item.level]} {item.label}: {item.detail}")
     print()
-    print("诊断不会联网，也不会读取或显示 API 密钥内容。")
+    print("Diagnostics make no network requests and never read or display API key values.")
     return 1 if any(item.level == "error" for item in items) else 0

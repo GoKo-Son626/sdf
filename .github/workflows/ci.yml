@@ -1,4 +1,4 @@
-name: 持续集成
+name: CI
 
 on:
   push:
@@ -16,24 +16,24 @@ jobs:
         python-version: ["3.11", "3.13"]
 
     steps:
-      - name: 检出仓库
+      - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: 配置 Python
+      - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: 检查仓库隐私
+      - name: Check repository privacy
         run: python scripts/check_repository.py
 
-      - name: 检查 Python 语法
+      - name: Check Python syntax
         run: python -m compileall -q src scripts tests en.py global_translate.py
 
-      - name: 检查 Shell 语法
+      - name: Check shell syntax
         run: bash -n install.sh uninstall.sh packaging/bin/sdf packaging/bin/sdf-global
 
-      - name: 运行测试
+      - name: Run tests
         env:
           PYTHONPATH: src
         run: python -m unittest discover -s tests -v

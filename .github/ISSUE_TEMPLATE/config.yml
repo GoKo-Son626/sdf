@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 安全漏洞报告
+  - name: Report a security vulnerability
     url: https://github.com/GoKo-Son626/sdf/security/advisories/new
-    about: 请通过私密渠道报告安全问题，不要在公开 Issue 中发布敏感信息。
+    about: Report security issues privately and never post sensitive information in a public issue.

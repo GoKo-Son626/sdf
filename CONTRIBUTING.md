@@ -1,15 +1,15 @@
-# 参与贡献
+# Contributing
 
-感谢你愿意改进 SDF 翻译工具。项目目前优先保证 Arch Linux、Wayland 和 niri 上的核心体验，同时欢迎为其他 Linux 发行版和桌面环境补充适配。
+Thanks for helping improve SDF Translator. The project currently focuses on a reliable Arch Linux, Wayland, and niri experience while welcoming support for other distributions and desktop environments.
 
-## 开始之前
+## Before you start
 
-- 功能建议和缺陷请先搜索现有 Issue，避免重复。
-- 安全漏洞不要公开提交完整利用细节，请按照 [SECURITY.md](SECURITY.md) 报告。
-- 不要提交 API 密钥、代理凭据、个人翻译记录、剪贴板内容或包含隐私的日志。
-- 新功能应保持依赖精简；如果确实需要新增依赖，请在 PR 中说明原因和替代方案。
+- Search existing issues before reporting a bug or proposing a feature.
+- Report vulnerabilities according to [SECURITY.md](SECURITY.md); do not publish exploit details.
+- Never commit API keys, proxy credentials, translation history, clipboard contents, or private logs.
+- Keep dependencies minimal. Explain any new dependency and the alternatives considered in your pull request.
 
-## 本地开发
+## Local development
 
 ```bash
 git clone https://github.com/GoKo-Son626/sdf.git
@@ -18,16 +18,16 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 python scripts/check_repository.py
 ```
 
-安装到当前 Arch 用户环境进行手工测试：
+Install into the current Arch Linux user account for manual testing:
 
 ```bash
 ./install.sh --yes
 ```
 
-## 提交要求
+## Submission guidelines
 
-- 一个提交尽量只处理一个完整目的，使用简洁的英文提交信息。
-- 修复缺陷时补充能覆盖旧问题的测试。
-- 改变命令、配置、安装方式或用户界面时同步更新 README。
-- 提交前运行全部测试和隐私检查，确认 `git status` 中没有个人文件。
-- PR 中说明测试平台；桌面集成改动至少注明 Wayland 合成器和编辑器/阅读器。
+- Keep each commit focused and use a concise English commit message.
+- Add a regression test when fixing a bug.
+- Update the README when changing commands, configuration, installation, or user-facing behavior.
+- Run the full test suite and privacy check before submitting; confirm that `git status` contains no personal files.
+- Include the test platform in the pull request. Desktop integration changes should identify the Wayland compositor and editor or document viewer used.

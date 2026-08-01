@@ -1,56 +1,56 @@
-name: 缺陷报告
-description: 报告可以稳定复现的翻译、安装或桌面集成问题
+name: Bug report
+description: Report a reproducible translation, installation, or desktop integration problem
 title: "[Bug] "
 body:
   - type: markdown
     attributes:
       value: |
-        感谢反馈。请先删除 API 密钥、令牌、私人原文、代理地址和其他敏感信息。
+        Thanks for reporting a bug. Remove API keys, tokens, private source text, proxy addresses, and other sensitive information first.
   - type: checkboxes
     id: checks
     attributes:
-      label: 提交前检查
+      label: Preflight checklist
       options:
-        - label: 我已经搜索现有 Issue，确认没有相同问题。
+        - label: I searched existing issues and found no equivalent report.
           required: true
-        - label: 我没有在内容或日志中粘贴 API 密钥、私人文档或其他敏感数据。
+        - label: I did not include API keys, private documents, or other sensitive data.
           required: true
   - type: input
     id: version
     attributes:
-      label: 版本或提交
-      description: 可运行 `git rev-parse --short HEAD` 获取。
-      placeholder: 例如 8451c83
+      label: Version or commit
+      description: Run `sdf --version` or `git rev-parse --short HEAD`.
+      placeholder: 0.1.0 or 62c3eb7
     validations:
       required: true
   - type: input
     id: environment
     attributes:
-      label: 系统环境
-      description: 发行版、Wayland/X11、合成器及相关应用或编辑器版本。
+      label: Environment
+      description: Distribution, Wayland/X11, compositor, and relevant application or editor versions.
       placeholder: Arch Linux / Wayland / niri / Neovim 0.12
     validations:
       required: true
   - type: textarea
     id: problem
     attributes:
-      label: 实际表现
-      description: 说明发生了什么，以及你原本期待什么。
+      label: Actual behavior
+      description: Explain what happened and what you expected instead.
     validations:
       required: true
   - type: textarea
     id: reproduce
     attributes:
-      label: 复现步骤
+      label: Reproduction steps
       placeholder: |
-        1. 运行……
-        2. 选择……
-        3. 按下……
+        1. Run ...
+        2. Select ...
+        3. Press ...
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
-      label: 脱敏后的日志
-      description: 可选。务必删除密钥、原文、用户名、个人路径和代理信息。
+      label: Sanitized logs
+      description: Optional. Remove secrets, source text, usernames, personal paths, and proxy details.
       render: shell

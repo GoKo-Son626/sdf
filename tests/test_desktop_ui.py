@@ -9,19 +9,19 @@ from sdf_translate import desktop
 
 class DesktopUiTests(unittest.TestCase):
     def test_result_content_only_adds_model_metadata(self) -> None:
-        content = desktop.translation_content("original", "译文", "test-model")
+        content = desktop.translation_content("original", "translation", "test-model")
         self.assertEqual(
             content,
-            "原文\noriginal\n\n翻译\n译文\n\n模型：test-model",
+            "Original\noriginal\n\nTranslation\ntranslation\n\nModel: test-model",
         )
-        self.assertNotIn("归档", content)
-        self.assertNotIn("来源", content)
+        self.assertNotIn("Archive", content)
+        self.assertNotIn("Source", content)
 
     def test_term_success_uses_one_compact_notification(self) -> None:
         payload = {
             "ok": True,
             "query": "modal",
-            "translation": "模态；模式；形式",
+            "translation": "modal; mode; form",
             "source": "test",
             "kind": "term",
             "saved": False,
@@ -35,7 +35,7 @@ class DesktopUiTests(unittest.TestCase):
             desktop.show_result(payload)
         notify.assert_called_once_with(
             "modal",
-            "模态；模式；形式\n\n模型：test",
+            "modal; mode; form\n\nModel: test",
             timeout_ms=12000,
         )
         show.assert_not_called()
@@ -44,7 +44,7 @@ class DesktopUiTests(unittest.TestCase):
         payload = {
             "ok": True,
             "query": "This is a sentence.",
-            "translation": "这是一个句子。",
+            "translation": "This is a translated sentence.",
             "source": "test-model",
             "kind": "text",
             "warnings": [],
@@ -56,11 +56,11 @@ class DesktopUiTests(unittest.TestCase):
             desktop.show_result(payload)
         notify.assert_not_called()
         show.assert_called_once_with(
-            "This is a sentence.", "这是一个句子。", "test-model"
+            "This is a sentence.", "This is a translated sentence.", "test-model"
         )
 
     def test_failure_uses_notification_and_no_result_window(self) -> None:
-        payload = {"ok": False, "error": "网络连接失败", "warnings": []}
+        payload = {"ok": False, "error": "Network connection failed", "warnings": []}
         with (
             patch.object(desktop, "notify") as notify,
             patch.object(desktop, "show_translation_result") as show,
