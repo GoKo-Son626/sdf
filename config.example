@@ -29,5 +29,10 @@ MODEL=deepseek-v4-flash
 # 可选：固定偏好的专业领域
 # TRANSLATION_DOMAIN=computer science
 
+# 生词本默认关闭。设置完整路径后，再选择保存模式：
+# off（关闭）/ all（全部）/ terms（仅单词术语）/ texts（仅句子长文）
+SAVE_MODE=off
+# VOCABULARY_FILE=/home/your-name/Documents/vocabulary.md
+
 # 可选：终端没有设置系统代理时指定
 # HTTPS_PROXY=http://127.0.0.1:7890

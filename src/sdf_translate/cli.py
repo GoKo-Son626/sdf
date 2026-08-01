@@ -13,18 +13,14 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .paths import config_file, history_file
+from .storage import SAVE_MODES, archive_result, save_mode, vocabulary_path
 
-# The compatibility phase keeps private runtime data in the repository root.
-# The installer later overrides this through SDF_APP_DIR so installed users
-# receive XDG-compliant per-user paths instead of writing into package files.
-APP_DIR = Path(os.environ.get("SDF_APP_DIR", Path(__file__).resolve().parents[2]))
-CONFIG_FILE = APP_DIR / "config.env"
-VOCAB_FILE = APP_DIR / "vocabulary.md"
-HISTORY_FILE = APP_DIR / ".history"
+CONFIG_FILE = config_file()
+HISTORY_FILE = history_file()
 
 DEFAULT_PROVIDER = "deepseek"
 DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash"
@@ -71,6 +67,13 @@ def load_config() -> dict[str, str]:
         "ASDF_API_KEY": "API_KEY",
         "ASDF_BASE_URL": "BASE_URL",
         "ASDF_MODEL": "MODEL",
+        "SDF_PROVIDER": "PROVIDER",
+        "SDF_PROVIDER_NAME": "PROVIDER_NAME",
+        "SDF_API_KEY": "API_KEY",
+        "SDF_BASE_URL": "BASE_URL",
+        "SDF_MODEL": "MODEL",
+        "SDF_SAVE_MODE": "SAVE_MODE",
+        "SDF_VOCABULARY_FILE": "VOCABULARY_FILE",
     }
     for env_key, config_key in env_map.items():
         if os.environ.get(env_key):
@@ -114,14 +117,18 @@ def read_disk_config() -> dict[str, str]:
     return disk_config
 
 
-def save_provider_config(values: dict[str, str]) -> None:
+def save_config_values(
+    values: dict[str, str], *, clear_keys: tuple[str, ...] = ()
+) -> None:
     disk_config = read_disk_config()
-    for old_key in ("GEMINI_API_KEY", "GEMINI_MODEL"):
-        disk_config.pop(old_key, None)
-    for key in ("PROVIDER", "PROVIDER_NAME", "API_KEY", "BASE_URL", "MODEL"):
+    for key in clear_keys:
         disk_config.pop(key, None)
-        if values.get(key):
-            disk_config[key] = values[key].strip()
+    for key, value in values.items():
+        cleaned = value.strip()
+        if cleaned:
+            disk_config[key] = cleaned
+        else:
+            disk_config.pop(key, None)
 
     lines = [
         "# 此文件包含私密配置，请勿分享。",
@@ -133,13 +140,31 @@ def save_provider_config(values: dict[str, str]) -> None:
         "BASE_URL",
         "MODEL",
         "TRANSLATION_DOMAIN",
+        "SAVE_MODE",
+        "VOCABULARY_FILE",
         "HTTPS_PROXY",
     )
     for key in ordered_keys:
         if disk_config.get(key):
             lines.append(f"{key}={disk_config[key]}")
+    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
     CONFIG_FILE.chmod(0o600)
+
+
+def save_provider_config(values: dict[str, str]) -> None:
+    save_config_values(
+        values,
+        clear_keys=(
+            "GEMINI_API_KEY",
+            "GEMINI_MODEL",
+            "PROVIDER",
+            "PROVIDER_NAME",
+            "API_KEY",
+            "BASE_URL",
+            "MODEL",
+        ),
+    )
 
 
 def prompt_value(label: str, default: str = "") -> str:
@@ -150,6 +175,71 @@ def prompt_value(label: str, default: str = "") -> str:
         print()
         return ""
     return value or default
+
+
+SAVE_MODE_ALIASES = {
+    "on": "all",
+    "true": "all",
+    "1": "all",
+    "word": "terms",
+    "words": "terms",
+    "term": "terms",
+    "sentence": "texts",
+    "sentences": "texts",
+    "text": "texts",
+}
+
+
+def set_vocabulary_path(raw_path: str) -> Path:
+    path = Path(os.path.expandvars(os.path.expanduser(raw_path.strip())))
+    if path.exists() and path.is_dir():
+        path /= "vocabulary.md"
+    path = path.resolve()
+    save_config_values({"VOCABULARY_FILE": str(path)})
+    return path
+
+
+def set_save_mode(raw_mode: str) -> str | None:
+    mode = SAVE_MODE_ALIASES.get(raw_mode.strip().lower(), raw_mode.strip().lower())
+    if mode not in SAVE_MODES:
+        return None
+    save_config_values({"SAVE_MODE": mode})
+    return mode
+
+
+def storage_summary(config: dict[str, str]) -> str:
+    path = vocabulary_path(config)
+    return f"保存模式：{save_mode(config)}；生词本：{path or '未设置'}"
+
+
+def configure_storage() -> bool:
+    config = load_config()
+    current_path = vocabulary_path(config)
+    print()
+    print(color("配置生词本", "1;36"))
+    print(f"当前路径：{current_path or '未设置'}")
+    raw_path = prompt_value("Markdown 文件路径", str(current_path or ""))
+    if not raw_path:
+        print(color("未设置路径，保存保持关闭。", "33"))
+        save_config_values({"SAVE_MODE": "off", "VOCABULARY_FILE": ""})
+        return True
+    path = set_vocabulary_path(raw_path)
+
+    print("  1. 关闭保存（默认）")
+    print("  2. 保存全部")
+    print("  3. 只保存单词和短术语")
+    print("  4. 只保存句子和长文本")
+    choices = {"1": "off", "2": "all", "3": "terms", "4": "texts"}
+    current_mode = save_mode(config)
+    default_choice = {value: key for key, value in choices.items()}.get(current_mode, "1")
+    choice = prompt_value("请选择", default_choice)
+    mode = choices.get(choice)
+    if mode is None:
+        print(color("无效选择，保存模式未改变。", "31"))
+        return False
+    set_save_mode(mode)
+    print(color(f"✓ 生词本：{path}\n✓ 保存模式：{mode}", "32"))
+    return True
 
 
 def configure_provider() -> bool:
@@ -718,50 +808,6 @@ def display_result(result: dict[str, Any]) -> None:
         print(color(translations[0] if translations else "", "1;32"))
 
 
-def markdown_text(value: Any) -> str:
-    text = str(value or "").strip()
-    return text.replace("\r", "").replace("\n", "<br>")
-
-
-def ensure_vocabulary_file() -> None:
-    if VOCAB_FILE.exists():
-        return
-    VOCAB_FILE.write_text(
-        "# English Vocabulary\n\n"
-        "> 原文一行，翻译一行。由终端命令 `sdf` 自动记录。\n\n",
-        encoding="utf-8",
-    )
-
-
-def save_result(result: dict[str, Any], *, quiet: bool = False) -> bool:
-    ensure_vocabulary_file()
-    query = normalize_query(str(result.get("query", "")))
-    existing = VOCAB_FILE.read_text(encoding="utf-8")
-    query_key = markdown_text(query).casefold()
-    already_saved = any(
-        line.rstrip().startswith("**")
-        and line.rstrip().endswith("**")
-        and line.rstrip()[2:-2].casefold() == query_key
-        for line in existing.splitlines()
-    )
-    if already_saved:
-        if not quiet:
-            print(color("↪ 该词条已在 vocabulary.md 中，不重复保存。", "33"))
-        return False
-
-    translation = "；".join(result.get("translations", []))
-    lines = [
-        f"**{markdown_text(query)}**  ",
-        markdown_text(translation),
-        "",
-    ]
-    with VOCAB_FILE.open("a", encoding="utf-8") as handle:
-        handle.write("\n".join(lines) + "\n")
-    if not quiet:
-        print(color(f"✓ 已保存到 {VOCAB_FILE}", "32"))
-    return True
-
-
 def translate_machine(
     query: str, domain: str, config: dict[str, str]
 ) -> tuple[dict[str, Any], int]:
@@ -805,7 +851,7 @@ def translate_machine(
                 "warnings": warnings,
             }, 1
 
-    saved = save_result(result, quiet=True)
+    archive = archive_result(result, config)
     translations = result.get("translations", [])
     payload = {
         "ok": True,
@@ -814,16 +860,15 @@ def translate_machine(
         "translations": translations,
         "translation": "；".join(translations),
         "source": result.get("source", ""),
-        "saved": saved,
-        "vocabulary_file": str(VOCAB_FILE),
+        "saved": archive.saved,
+        "archive_status": archive.status,
+        "vocabulary_file": str(archive.path) if archive.path else "",
         "warnings": warnings,
     }
     return payload, 0
 
 
-def translate_and_save(
-    query: str, domain: str, config: dict[str, str], *, should_save: bool = True
-) -> bool:
+def translate_and_save(query: str, domain: str, config: dict[str, str]) -> bool:
     query = normalize_query(query)
     if not query:
         return False
@@ -865,10 +910,15 @@ def translate_and_save(
             return False
 
     display_result(result)
-    if should_save:
-        save_result(result)
-    else:
-        print(color("本次未保存。", "33"))
+    archive = archive_result(result, config)
+    if archive.status == "saved":
+        print(color(f"✓ 已保存到 {archive.path}", "32"))
+    elif archive.status == "duplicate":
+        print(color("↪ 已存在相同记录，不重复保存。", "33"))
+    elif archive.status == "path_missing":
+        print(color("未保存：请先使用 :save-path 设置生词本路径。", "33"))
+    elif archive.status == "filtered":
+        print(color("本条不符合当前保存类型，未保存。", "33"))
     return True
 
 
@@ -889,6 +939,7 @@ def save_history() -> None:
     try:
         import readline
 
+        HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
         readline.write_history_file(HISTORY_FILE)
     except (ImportError, OSError):
         pass
@@ -939,7 +990,10 @@ HELP = """
   :domain <领域>  设置当前专业领域，例如 :domain embedded systems
   :domain          查看当前领域
   :provider        查看当前大模型和模型名称
-  :save on|off     开启或关闭自动保存
+  :save             查看当前保存设置
+  :save off|all|terms|texts  设置保存类型
+  :save-path <路径> 设置 Markdown 生词本路径
+  :settings         交互配置生词本
   :setup           配置或切换大模型
   :file            显示 Markdown 生词本路径
   :help            显示帮助
@@ -957,9 +1011,7 @@ def interactive() -> int:
         config = load_config()
 
     domain = config.get("TRANSLATION_DOMAIN", "")
-    auto_save = True
     setup_readline()
-    ensure_vocabulary_file()
     print(color("English 专业翻译助手", "1;36"))
     print("输入英文即可翻译；输入 :help 查看命令，:quit 退出。")
     if config.get("PROVIDER") not in ("", "none"):
@@ -994,7 +1046,11 @@ def interactive() -> int:
             print(HELP)
             continue
         if value == ":file":
-            print(VOCAB_FILE)
+            print(vocabulary_path(config) or "尚未设置生词本路径")
+            continue
+        if value == ":settings":
+            if configure_storage():
+                config = load_config()
             continue
         if value == ":setup":
             if configure_provider():
@@ -1016,21 +1072,29 @@ def interactive() -> int:
             domain = normalize_query(value[len(":domain ") :])
             print(f"当前领域已设为：{domain or '未指定'}")
             continue
+        if value == ":save":
+            print(storage_summary(config))
+            continue
+        if value.startswith(":save-path "):
+            path = set_vocabulary_path(value[len(":save-path ") :])
+            config = load_config()
+            print(f"生词本路径已设为：{path}")
+            continue
+        if value == ":save-path":
+            print(vocabulary_path(config) or "尚未设置生词本路径")
+            continue
         if value.startswith(":save "):
-            option = value[len(":save ") :].strip().lower()
-            if option in ("on", "true", "1"):
-                auto_save = True
-                print("自动保存：开启")
-            elif option in ("off", "false", "0"):
-                auto_save = False
-                print("自动保存：关闭")
+            mode = set_save_mode(value[len(":save ") :])
+            if mode is None:
+                print("用法：:save off|all|terms|texts")
             else:
-                print("用法：:save on 或 :save off")
+                config = load_config()
+                print(f"保存模式已设为：{mode}")
             continue
         if value.startswith(":"):
             print("未知命令。输入 :help 查看帮助。")
             continue
-        translate_and_save(value, domain, config, should_save=auto_save)
+        translate_and_save(value, domain, config)
 
     save_history()
     print("再见。")
@@ -1048,6 +1112,21 @@ def main() -> int:
         return 0
     if sys.argv[1] == "--setup":
         return 0 if configure_provider() else 1
+    if sys.argv[1] == "--settings":
+        return 0 if configure_storage() else 1
+    if sys.argv[1] == "--set-save-path":
+        if len(sys.argv) < 3:
+            print("用法：sdf --set-save-path <Markdown 文件路径>")
+            return 2
+        print(f"生词本路径已设为：{set_vocabulary_path(' '.join(sys.argv[2:]))}")
+        return 0
+    if sys.argv[1] == "--set-save-mode":
+        mode = set_save_mode(sys.argv[2]) if len(sys.argv) == 3 else None
+        if mode is None:
+            print("用法：sdf --set-save-mode off|all|terms|texts")
+            return 2
+        print(f"保存模式已设为：{mode}")
+        return 0
 
     if sys.argv[1] == "--json":
         config = load_config()

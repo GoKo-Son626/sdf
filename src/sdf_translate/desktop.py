@@ -178,10 +178,17 @@ def show_result(payload: dict[str, object]) -> None:
         notify("翻译备用提示", "\n".join(str(item) for item in warnings))
 
     vocabulary_file = str(payload.get("vocabulary_file") or "vocabulary.md")
-    if payload.get("saved") is True:
+    archive_status_value = str(payload.get("archive_status") or "")
+    if archive_status_value == "saved":
         archive_status = f"已保存到 {vocabulary_file}"
-    elif payload.get("saved") is False:
-        archive_status = "未保存或已有相同记录"
+    elif archive_status_value == "duplicate":
+        archive_status = "已有相同记录"
+    elif archive_status_value == "disabled":
+        archive_status = "保存功能未开启"
+    elif archive_status_value == "path_missing":
+        archive_status = "未设置生词本路径"
+    elif archive_status_value == "filtered":
+        archive_status = "不符合当前保存类型"
     else:
         archive_status = ""
     show_translation_result(
