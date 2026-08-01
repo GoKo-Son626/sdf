@@ -240,6 +240,8 @@ python scripts/check_repository.py
 
 GitHub Actions 会在 Python 3.11 和 3.13 上执行语法检查、单元测试和仓库隐私检查。
 
+参与开发前请阅读 [贡献指南](CONTRIBUTING.md)；安全问题请按照 [安全策略](SECURITY.md) 私密报告。
+
 ## 许可证
 
 本项目采用 [MIT License](LICENSE)。
