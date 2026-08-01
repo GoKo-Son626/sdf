@@ -234,3 +234,7 @@ tests/                标准库 unittest 测试
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
+
+## 许可证
+
+本项目采用 [MIT License](LICENSE)。

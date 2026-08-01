@@ -5,7 +5,7 @@ pkgrel=1
 pkgdesc="Fast global AI translation to Simplified Chinese"
 arch=(any)
 url="https://github.com/OWNER/sdf-translator"
-license=(custom)
+license=(MIT)
 depends=(python wl-clipboard zenity libnotify)
 makedepends=(git)
 provides=(sdf-translator)
@@ -24,6 +24,8 @@ package() {
   install -Dm755 "$startdir/sdf-global" "$pkgdir/usr/bin/sdf-global"
   install -Dm644 "$project_root/README.md" \
     "$pkgdir/usr/share/doc/sdf-translator/README.md"
+  install -Dm644 "$project_root/LICENSE" \
+    "$pkgdir/usr/share/licenses/sdf-translator/LICENSE"
   install -Dm644 "$project_root/config.example" \
     "$pkgdir/usr/share/doc/sdf-translator/config.example"
   install -Dm644 "$project_root/editor/nvim/sdf-selection.lua" \
