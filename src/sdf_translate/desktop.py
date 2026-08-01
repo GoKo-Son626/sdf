@@ -213,7 +213,7 @@ def main() -> int:
         if not text:
             notify(
                 "没有检测到文字",
-                "请先用鼠标选中英文；扫描版 PDF 需要使用 OCR。",
+                "请先用鼠标选中要翻译的文字；扫描版 PDF 需要使用 OCR。",
             )
             return 1
         if len(text) > MAX_INPUT_CHARS:

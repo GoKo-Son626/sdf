@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Terminal English assistant: configurable LLM first, free services as fallback."""
+"""Terminal multilingual translator: configurable LLM first, free fallback."""
 
 from __future__ import annotations
 
@@ -27,6 +27,7 @@ DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 DICTIONARY_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
 MYMEMORY_URL = "https://api.mymemory.translated.net/get"
+GOOGLE_TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single"
 
 ANSI = sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
 
@@ -411,9 +412,9 @@ def sensitive_input_reason(query: str) -> str | None:
 
 
 def is_short_term(query: str) -> bool:
-    """Treat a word or compact technical phrase as a term, not a sentence."""
+    """Treat a word or compact multilingual phrase as a term, not a sentence."""
     normalized = normalize_query(query)
-    words = re.findall(r"[A-Za-z0-9][A-Za-z0-9'_.+-]*", normalized)
+    words = re.findall(r"\w+(?:['_.+-]\w+)*", normalized, flags=re.UNICODE)
     sentence_marks = re.search(r"[.!?;。！？；]", normalized)
     return bool(words) and len(words) <= 5 and len(normalized) <= 80 and not sentence_marks
 
@@ -450,7 +451,8 @@ def translation_prompt(query: str, domain: str) -> str:
             "translations 数组必须且只能包含这一个完整译文。"
         )
     return f"""
-你是一名严谨、简洁的英汉专业翻译。使用业界通行译名，并优先采用用户指定领域的语境。
+你是一名严谨、简洁的多语言专业翻译。自动识别用户输入的语言，并翻译为简体中文。
+使用业界通行译名，并优先采用用户指定领域的语境。如果输入已经是中文，保持原意并只做必要的规范化。
 只输出一个合法 JSON 对象，不要输出 Markdown 或 JSON 之外的文字。
 
 JSON 必须使用这个结构：
@@ -588,7 +590,7 @@ def translate_with_openai_compatible(
         "messages": [
             {
                 "role": "system",
-                "content": "你是严谨、简洁的英汉专业翻译，只返回合法 JSON。",
+                "content": "你是严谨、简洁的多语言专业翻译，自动识别语言并译为简体中文，只返回合法 JSON。",
             },
             {"role": "user", "content": prompt},
         ],
@@ -683,6 +685,26 @@ def mymemory_lookup(text: str) -> dict[str, Any]:
     return {"translation": primary, "alternatives": alternatives[:3]}
 
 
+def google_translate_lookup(text: str) -> dict[str, Any]:
+    """Use Google's public web translation endpoint with language detection."""
+    params = urllib.parse.urlencode(
+        {"client": "gtx", "sl": "auto", "tl": "zh-CN", "dt": "t", "q": text}
+    )
+    response = json_request(f"{GOOGLE_TRANSLATE_URL}?{params}", timeout=15)
+    if not isinstance(response, list) or not response or not response[0]:
+        raise RuntimeError("Google 免费翻译返回内容为空")
+    translated = "".join(
+        str(segment[0])
+        for segment in response[0]
+        if isinstance(segment, list) and segment and segment[0]
+    )
+    detected = str(response[2]) if len(response) > 2 and response[2] else ""
+    return {
+        "translation": simplified_chinese(translated.strip()),
+        "detected_language": detected,
+    }
+
+
 def dictionary_lookup(word: str) -> dict[str, Any] | None:
     url = DICTIONARY_URL.format(word=urllib.parse.quote(word))
     try:
@@ -731,6 +753,17 @@ def safe_mymemory(text: str) -> tuple[dict[str, Any] | None, str | None]:
         return None, f"MyMemory {type(exc).__name__}: {exc}"
 
 
+def safe_google_translate(text: str) -> tuple[dict[str, Any] | None, str | None]:
+    try:
+        return google_translate_lookup(text), None
+    except urllib.error.HTTPError as exc:
+        return None, f"Google 免费翻译 HTTP {exc.code}"
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        return None, f"Google 免费翻译 {exc}"
+    except Exception as exc:
+        return None, f"Google 免费翻译 {type(exc).__name__}: {exc}"
+
+
 def safe_dictionary(word: str) -> tuple[dict[str, Any] | None, str | None]:
     try:
         return dictionary_lookup(word), None
@@ -772,10 +805,17 @@ def split_utf8_chunks(text: str, max_bytes: int = 450) -> list[str]:
 def translate_with_fallback(query: str) -> dict[str, Any]:
     chunks = split_utf8_chunks(query)
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(chunks))) as pool:
-        responses = list(pool.map(safe_mymemory, chunks))
+        responses = list(pool.map(safe_google_translate, chunks))
     failures = [error for translated, error in responses if not translated]
     if failures:
-        raise RuntimeError("；".join(error or "未知错误" for error in failures))
+        # MyMemory remains a keyless backup for the original English use case.
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(4, len(chunks))
+        ) as pool:
+            responses = list(pool.map(safe_mymemory, chunks))
+        failures = [error for translated, error in responses if not translated]
+        if failures:
+            raise RuntimeError("；".join(error or "未知错误" for error in failures))
     translated_parts = [
         str(translated.get("translation", "")).strip()
         for translated, _ in responses
@@ -799,7 +839,7 @@ def translate_with_fallback(query: str) -> dict[str, Any]:
         "query": query,
         "kind": "term" if is_short_term(query) else "text",
         "translations": translations,
-        "source": "MyMemory（免费备用）",
+        "source": "免费机器翻译备用服务",
     }
 
 
@@ -973,7 +1013,7 @@ def read_interactive_input(prompt: str) -> str:
 
 
 def read_paste_block() -> str:
-    print("请粘贴多行英文；完成后另起一行输入 :end")
+    print("请粘贴多行文本；完成后另起一行输入 :end")
     lines: list[str] = []
     while True:
         try:
@@ -987,7 +1027,7 @@ def read_paste_block() -> str:
 
 
 HELP = """
-直接输入英文单词、专业术语、短语或句子并回车。
+直接输入任意语言的单词、专业术语、短语、句子或文章并回车，结果统一为简体中文。
 可直接粘贴多行文本；如终端仍会拆行，先输入 :paste，最后输入 :end。
 
 命令：
@@ -1018,8 +1058,8 @@ def interactive() -> int:
 
     domain = config.get("TRANSLATION_DOMAIN", "")
     setup_readline()
-    print(color("English 专业翻译助手", "1;36"))
-    print("输入英文即可翻译；输入 :help 查看命令，:quit 退出。")
+    print(color("多语言专业翻译助手", "1;36"))
+    print("输入任意语言即可翻译为中文；输入 :help 查看命令，:quit 退出。")
     if config.get("PROVIDER") not in ("", "none"):
         print(
             f"当前模型：{provider_label(config)} / "
@@ -1032,7 +1072,7 @@ def interactive() -> int:
 
     while True:
         try:
-            raw = read_interactive_input(color("\nEnglish> ", "1;34"))
+            raw = read_interactive_input(color("\nText> ", "1;34"))
         except EOFError:
             print()
             break
@@ -1114,7 +1154,7 @@ def main() -> int:
     if len(sys.argv) == 1:
         return interactive()
     if sys.argv[1] in ("-h", "--help"):
-        print("用法：sdf [英文单词、术语、短语或句子]")
+        print("用法：sdf [任意语言的单词、术语、短语、句子或文章]")
         print("不带参数时进入交互模式。")
         print()
         print(HELP)
