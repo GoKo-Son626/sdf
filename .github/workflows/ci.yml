@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Check repository privacy
+        run: python scripts/check_repository.py
+
+      - name: Check Python syntax
+        run: python -m compileall -q src scripts tests en.py global_translate.py
+
+      - name: Check shell syntax
+        run: bash -n install.sh uninstall.sh packaging/bin/sdf packaging/bin/sdf-global
+
+      - name: Run tests
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -v

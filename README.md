@@ -233,7 +233,10 @@ tests/                标准库 unittest 测试
 
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests -v
+python scripts/check_repository.py
 ```
+
+GitHub Actions 会在 Python 3.11 和 3.13 上执行语法检查、单元测试和仓库隐私检查。
 
 ## 许可证
 
