@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
+from .diagnostics import print_diagnostics
 from .paths import config_file, history_file
 from .providers import PROVIDER_PRESETS, free_provider_help
 from .storage import SAVE_MODES, archive_result, save_mode, vocabulary_path
@@ -1044,6 +1045,10 @@ HELP = """
   :file            显示 Markdown 生词本路径
   :help            显示帮助
   :quit            退出（也可以按 Ctrl-D）
+
+命令行选项：
+  sdf --version    显示版本
+  sdf --doctor     安全检查运行环境和配置
 """.strip()
 
 
@@ -1159,6 +1164,11 @@ def main() -> int:
         print()
         print(HELP)
         return 0
+    if sys.argv[1] in ("-V", "--version"):
+        print(f"SDF 翻译工具 {__version__}")
+        return 0
+    if sys.argv[1] == "--doctor":
+        return print_diagnostics(load_config())
     if sys.argv[1] == "--setup":
         return 0 if configure_provider() else 1
     if sys.argv[1] == "--free-api-help":

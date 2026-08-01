@@ -72,6 +72,15 @@ sdf "race condition"
 sdf "Esta es una oración completa."
 ```
 
+查看版本或排查安装环境：
+
+```bash
+sdf --version
+sdf --doctor
+```
+
+环境诊断会检查 Wayland、剪贴板工具、结果窗口、通知工具、配置权限、模型和生词本设置，但不会联网，也不会显示 API 密钥。
+
 在图形程序中使用时，先用鼠标选中文字，再按 `Super+Shift+T`。如果没有主选区，程序不会静默翻译旧剪贴板，而是显示普通剪贴板内容并请求确认。单词和短语成功时只出现一个紧凑通知，句子和长文成功时只出现一个翻译结果窗口。
 
 ## Vim 和 Neovim
