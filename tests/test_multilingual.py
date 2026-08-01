@@ -23,7 +23,33 @@ class MultilingualTranslationTests(unittest.TestCase):
         prompt = cli.translation_prompt("hola mundo", "操作系统")
         self.assertIn("自动识别", prompt)
         self.assertIn("简体中文", prompt)
+        self.assertIn("2～3", prompt)
         self.assertIn("操作系统", prompt)
+
+    def test_term_schema_requests_two_to_three_meanings(self) -> None:
+        term_schema = cli.gemini_schema("race condition")
+        text_schema = cli.gemini_schema("This is a complete sentence.")
+        self.assertEqual(term_schema["properties"]["translations"]["minItems"], 2)
+        self.assertEqual(term_schema["properties"]["translations"]["maxItems"], 3)
+        self.assertEqual(text_schema["properties"]["translations"]["maxItems"], 1)
+
+    def test_model_term_result_is_limited_to_three_meanings(self) -> None:
+        result = cli.validate_model_result(
+            {"translations": ["竞态条件", "竞争条件", "竞争状态", "冷僻释义"]},
+            "race condition",
+            "test",
+        )
+        self.assertEqual(
+            result["translations"], ["竞态条件", "竞争条件", "竞争状态"]
+        )
+
+    def test_sentence_result_keeps_only_one_translation(self) -> None:
+        result = cli.validate_model_result(
+            {"translations": ["第一份译文。", "第二份译文。"]},
+            "This is a complete sentence.",
+            "test",
+        )
+        self.assertEqual(result["translations"], ["第一份译文。"])
 
     def test_google_fallback_parses_detected_language(self) -> None:
         response = [[['你好世界', 'hola mundo', None, None]], None, 'es']

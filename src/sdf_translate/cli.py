@@ -419,17 +419,18 @@ def is_short_term(query: str) -> bool:
     return bool(words) and len(words) <= 5 and len(normalized) <= 80 and not sentence_marks
 
 
-def gemini_schema() -> dict[str, Any]:
+def gemini_schema(query: str) -> dict[str, Any]:
+    term = is_short_term(query)
     return {
         "type": "OBJECT",
         "properties": {
             "query": {"type": "STRING"},
             "translations": {
                 "type": "ARRAY",
-                "minItems": 1,
-                "maxItems": 4,
+                "minItems": 2 if term else 1,
+                "maxItems": 3 if term else 1,
                 "items": {"type": "STRING"},
-                "description": "术语模式返回1到4个简短中文意思；文本模式只返回完整译文一个元素",
+                "description": "术语模式返回2到3个常用中文意思；文本模式只返回一个完整译文",
             },
         },
         "required": ["query", "translations"],
@@ -439,7 +440,7 @@ def gemini_schema() -> dict[str, Any]:
 def translation_prompt(query: str, domain: str) -> str:
     if is_short_term(query):
         task = (
-            "这是单词或短专业术语。只给出按可能性排序的 1～4 个简短中文意思。"
+            "这是单词或短专业术语。只给出按可能性排序的 2～3 个常用中文意思。"
             "每个元素只能是中文译词或很短的释义，不要解释、不要例句、不要领域标签。"
             "不同元素必须是真正不同且常用的含义，不要为了凑数添加冷僻含义。"
         )
@@ -495,7 +496,7 @@ def validate_model_result(
     if not isinstance(raw_translations, list):
         raw_translations = [result.get("translation", "")]
     translations: list[str] = []
-    limit = 4 if is_short_term(query) else 1
+    limit = 3 if is_short_term(query) else 1
     for item in raw_translations:
         text = simplified_chinese(str(item).strip())
         if text and text not in translations:
@@ -525,7 +526,7 @@ def translate_with_gemini(
             "temperature": 0.15,
             "maxOutputTokens": 300 if is_short_term(query) else 2400,
             "responseMimeType": "application/json",
-            "responseSchema": gemini_schema(),
+            "responseSchema": gemini_schema(query),
         },
     }
     url = GEMINI_URL.format(model=urllib.parse.quote(model, safe=""))
@@ -831,7 +832,7 @@ def translate_with_fallback(query: str) -> dict[str, Any]:
         value = simplified_chinese(str(item).strip())
         if value and value not in translations:
             translations.append(value)
-        if len(translations) >= (4 if is_short_term(query) else 1):
+        if len(translations) >= (3 if is_short_term(query) else 1):
             break
     if not translations:
         raise RuntimeError("免费翻译服务没有返回有效译文")
