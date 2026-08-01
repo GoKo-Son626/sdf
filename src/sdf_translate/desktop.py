@@ -31,15 +31,23 @@ def run(
     )
 
 
-def notify(title: str, message: str, urgency: str = "normal") -> None:
+def notify(
+    title: str,
+    message: str,
+    urgency: str = "normal",
+    *,
+    timeout_ms: int | None = None,
+) -> None:
+    args = [
+        "notify-send",
+        f"--urgency={urgency}",
+        "--app-name=全局翻译",
+    ]
+    if timeout_ms is not None:
+        args.append(f"--expire-time={timeout_ms}")
+    args.extend((title, message))
     subprocess.Popen(
-        [
-            "notify-send",
-            f"--urgency={urgency}",
-            "--app-name=全局翻译",
-            title,
-            message,
-        ],
+        args,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -115,19 +123,19 @@ def translate(text: str) -> dict[str, object]:
     return payload
 
 
+def translation_content(query: str, translation: str, source: str) -> str:
+    content = f"原文\n{query}\n\n翻译\n{translation}"
+    if source:
+        content += f"\n\n模型：{source}"
+    return content
+
+
 def show_translation_result(
     query: str,
     translation: str,
     source: str,
-    *,
-    is_term: bool,
-    archive_status: str = "",
 ) -> None:
-    content = f"原文\n{query}\n\n翻译\n{translation}"
-    if source:
-        content += f"\n\n来源：{source}"
-    if archive_status:
-        content += f"\n归档：{archive_status}"
+    content = translation_content(query, translation, source)
     temp_path = ""
     try:
         with tempfile.NamedTemporaryFile(
@@ -144,8 +152,8 @@ def show_translation_result(
                 "zenity",
                 "--text-info",
                 "--title=翻译结果",
-                f"--width={560 if is_term else 760}",
-                f"--height={260 if is_term else 480}",
+                "--width=760",
+                "--height=480",
                 "--ok-label=关闭",
                 "--font=Sans 12",
                 f"--filename={temp_path}",
@@ -158,6 +166,13 @@ def show_translation_result(
                 os.unlink(temp_path)
             except OSError:
                 pass
+
+
+def show_term_result(query: str, translation: str, source: str) -> None:
+    message = translation
+    if source:
+        message += f"\n\n模型：{source}"
+    notify(query or "翻译结果", message, timeout_ms=12000)
 
 
 def show_result(payload: dict[str, object]) -> None:
@@ -177,27 +192,10 @@ def show_result(payload: dict[str, object]) -> None:
     if warnings:
         notify("翻译备用提示", "\n".join(str(item) for item in warnings))
 
-    vocabulary_file = str(payload.get("vocabulary_file") or "vocabulary.md")
-    archive_status_value = str(payload.get("archive_status") or "")
-    if archive_status_value == "saved":
-        archive_status = f"已保存到 {vocabulary_file}"
-    elif archive_status_value == "duplicate":
-        archive_status = "已有相同记录"
-    elif archive_status_value == "disabled":
-        archive_status = "保存功能未开启"
-    elif archive_status_value == "path_missing":
-        archive_status = "未设置生词本路径"
-    elif archive_status_value == "filtered":
-        archive_status = "不符合当前保存类型"
+    if payload.get("kind") == "term":
+        show_term_result(query, translation, source)
     else:
-        archive_status = ""
-    show_translation_result(
-        query,
-        translation,
-        source,
-        is_term=payload.get("kind") == "term",
-        archive_status=archive_status,
-    )
+        show_translation_result(query, translation, source)
 
 
 def main() -> int:
