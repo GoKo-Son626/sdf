@@ -17,17 +17,13 @@ from pathlib import Path
 from typing import Any
 
 from .paths import config_file, history_file
+from .providers import PROVIDER_PRESETS, free_provider_help
 from .storage import SAVE_MODES, archive_result, save_mode, vocabulary_path
 
 CONFIG_FILE = config_file()
 HISTORY_FILE = history_file()
 
-DEFAULT_PROVIDER = "deepseek"
-DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash"
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
-DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-ZHIPU_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
-DEFAULT_ZHIPU_MODEL = "glm-4.7-flash"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 DICTIONARY_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
 MYMEMORY_URL = "https://api.mymemory.translated.net/get"
@@ -96,6 +92,15 @@ def load_config() -> dict[str, str]:
         config["API_KEY"] = os.environ["GEMINI_API_KEY"]
     if os.environ.get("GEMINI_MODEL") and config.get("PROVIDER") == "gemini":
         config["MODEL"] = os.environ["GEMINI_MODEL"]
+    provider_env_keys = (
+        ("GROQ_API_KEY", "groq"),
+        ("OPENROUTER_API_KEY", "openrouter"),
+        ("SILICONFLOW_API_KEY", "siliconflow"),
+        ("GITHUB_TOKEN", "github-models"),
+    )
+    for env_key, provider_id in provider_env_keys:
+        if os.environ.get(env_key) and config.get("PROVIDER") == provider_id:
+            config["API_KEY"] = os.environ[env_key]
 
     # Migrate the original Gemini-only config without breaking existing users.
     if "PROVIDER" not in config and config.get("GEMINI_API_KEY"):
@@ -243,68 +248,68 @@ def configure_storage() -> bool:
 
 
 def configure_provider() -> bool:
-    print()
-    print(color("配置大模型", "1;36"))
-    print("  1. DeepSeek（推荐，默认）")
-    print("  2. 智谱 GLM-4.7-Flash（免费）")
-    print("  3. Gemini")
-    print("  4. 任意 OpenAI 兼容接口")
-    print("  5. 不使用大模型，只用免费备用翻译")
-    try:
-        choice = input("请选择 [1]: ").strip() or "1"
-    except (EOFError, KeyboardInterrupt):
+    while True:
         print()
-        return False
-
-    if choice == "5":
-        save_provider_config({"PROVIDER": "none", "PROVIDER_NAME": "免费备用翻译"})
-        print(color("✓ 已设置为只使用免费备用翻译。", "32"))
-        return True
-
-    if choice == "1":
-        values = {
-            "PROVIDER": "deepseek",
-            "PROVIDER_NAME": "DeepSeek",
-            "BASE_URL": DEEPSEEK_BASE_URL,
-            "MODEL": DEFAULT_DEEPSEEK_MODEL,
-        }
-        print("API Key 获取地址：https://platform.deepseek.com/api_keys")
-        key_label = "DeepSeek API Key"
-    elif choice == "2":
-        values = {
-            "PROVIDER": "zhipu",
-            "PROVIDER_NAME": "智谱 GLM",
-            "BASE_URL": ZHIPU_BASE_URL,
-            "MODEL": DEFAULT_ZHIPU_MODEL,
-        }
-        print("API Key 获取地址：https://bigmodel.cn/usercenter/proj-mgmt/apikeys")
-        key_label = "智谱 API Key"
-    elif choice == "3":
-        values = {
-            "PROVIDER": "gemini",
-            "PROVIDER_NAME": "Gemini",
-            "MODEL": DEFAULT_GEMINI_MODEL,
-        }
-        print("API Key 获取地址：https://aistudio.google.com/app/apikey")
-        key_label = "Gemini API Key"
-    elif choice == "4":
-        print("适用于 OpenAI、硅基流动、OpenRouter、Moonshot 等兼容接口。")
-        provider_name = prompt_value("服务名称", "自定义大模型")
-        base_url = prompt_value("API Base URL（通常以 /v1 结尾）")
-        model = prompt_value("模型名称")
-        if not base_url or not model:
-            print(color("Base URL 和模型名称不能为空。", "31"))
+        print(color("配置大模型", "1;36"))
+        for index, preset in enumerate(PROVIDER_PRESETS, start=1):
+            free_mark = " [免费]" if preset.free else ""
+            print(f"  {index}. {preset.name}{free_mark} — {preset.note}")
+        custom_choice = len(PROVIDER_PRESETS) + 1
+        none_choice = custom_choice + 1
+        print(f"  {custom_choice}. 任意 OpenAI 兼容接口")
+        print(f"  {none_choice}. 不使用大模型，只用免费备用翻译")
+        print("  h. 查看免费 API Key 获取方法")
+        try:
+            choice = input("请选择 [1]: ").strip().lower() or "1"
+        except (EOFError, KeyboardInterrupt):
+            print()
             return False
+
+        if choice in ("h", "help", "?"):
+            print()
+            print(free_provider_help())
+            continue
+        if choice in ("q", "quit"):
+            return False
+        if choice == str(none_choice):
+            save_provider_config(
+                {"PROVIDER": "none", "PROVIDER_NAME": "免费备用翻译"}
+            )
+            print(color("✓ 已设置为只使用免费备用翻译。", "32"))
+            return True
+        if choice == str(custom_choice):
+            print("适用于 OpenAI、Groq、OpenRouter、GitHub Models、硅基流动等接口。")
+            provider_name = prompt_value("服务名称", "自定义大模型")
+            base_url = prompt_value("API Base URL（通常以 /v1 结尾）")
+            model = prompt_value("模型名称")
+            if not base_url or not model:
+                print(color("Base URL 和模型名称不能为空。", "31"))
+                return False
+            values = {
+                "PROVIDER": "openai-compatible",
+                "PROVIDER_NAME": provider_name,
+                "BASE_URL": base_url,
+                "MODEL": model,
+            }
+            key_label = f"{provider_name} API Key"
+            break
+        try:
+            preset = PROVIDER_PRESETS[int(choice) - 1]
+        except (ValueError, IndexError):
+            print(color("无效选择，请重新输入。", "31"))
+            continue
+        print(f"API Key 获取地址：{preset.key_url}")
+        print(f"说明：{preset.note}")
+        model = prompt_value("模型名称", preset.model)
         values = {
-            "PROVIDER": "openai-compatible",
-            "PROVIDER_NAME": provider_name,
-            "BASE_URL": base_url,
+            "PROVIDER": preset.provider_id,
+            "PROVIDER_NAME": preset.name,
             "MODEL": model,
         }
-        key_label = f"{provider_name} API Key"
-    else:
-        print(color("无效选择，配置未改变。", "31"))
-        return False
+        if preset.base_url:
+            values["BASE_URL"] = preset.base_url
+        key_label = f"{preset.name} API Key"
+        break
 
     print("粘贴时终端不会显示字符。")
     try:
@@ -648,7 +653,7 @@ def translate_with_configured_model(
     provider = config.get("PROVIDER", "")
     if provider == "gemini":
         return translate_with_gemini(query, domain, config)
-    if provider in ("deepseek", "zhipu", "openai-compatible"):
+    if provider not in ("", "none"):
         return translate_with_openai_compatible(query, domain, config)
     raise RuntimeError("尚未配置大模型")
 
@@ -990,6 +995,7 @@ HELP = """
   :domain <领域>  设置当前专业领域，例如 :domain embedded systems
   :domain          查看当前领域
   :provider        查看当前大模型和模型名称
+  :free-api        查看免费 API Key 获取方法
   :save             查看当前保存设置
   :save off|all|terms|texts  设置保存类型
   :save-path <路径> 设置 Markdown 生词本路径
@@ -1065,6 +1071,9 @@ def interactive() -> int:
                     f"{config.get('MODEL', '未指定')}"
                 )
             continue
+        if value == ":free-api":
+            print(free_provider_help())
+            continue
         if value == ":domain":
             print(f"当前领域：{domain or '未指定'}")
             continue
@@ -1112,6 +1121,9 @@ def main() -> int:
         return 0
     if sys.argv[1] == "--setup":
         return 0 if configure_provider() else 1
+    if sys.argv[1] == "--free-api-help":
+        print(free_provider_help())
+        return 0
     if sys.argv[1] == "--settings":
         return 0 if configure_storage() else 1
     if sys.argv[1] == "--set-save-path":

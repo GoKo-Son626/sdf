@@ -26,6 +26,13 @@ MODEL=deepseek-v4-flash
 # PROVIDER_NAME=Gemini
 # MODEL=gemini-2.5-flash
 
+# 其他内置免费/限速服务可直接运行 sdf --setup 选择：
+# - Groq Free
+# - OpenRouter Free Router
+# - GitHub Models
+# - 硅基流动免费模型
+# 完整 API Key 获取地址可运行：sdf --free-api-help
+
 # 可选：固定偏好的专业领域
 # TRANSLATION_DOMAIN=computer science
 
