@@ -1,137 +1,236 @@
-# English 专业翻译助手
+# SDF Translator
 
-在任意终端中运行：
+SDF Translator 是一个面向 Linux 的轻量级全局 AI 翻译工具。它可以在终端中交互使用，也可以在 PDF 阅读器、WPS、浏览器、Vim/Neovim 等程序里选中文字后按全局快捷键翻译。输入语言会自动识别，输出统一为简体中文。
 
-```bash
-sdf
-```
+核心行为很克制：单词和短术语返回 2～3 个最常用的中文意思；句子、段落和文章只返回一份完整、连贯并贴合所设专业领域的译文。翻译成功时只显示一个结果窗口，失败或降级时才发出额外通知。
 
-然后直接输入英文单词、术语、短语或句子。每次成功查询后，结果会自动保存到
-`/home/shuqi/repo/AI/translat-tool-goko/vocabulary.md`。
+## 适用平台
 
-输出规则：
+- 当前正式支持：Arch Linux、Wayland、niri。
+- 终端命令本身采用纯 Python 3 标准库，源码和 XDG 目录布局已经与发行版解耦。
+- Ubuntu、Debian、Fedora、CentOS 等发行版的依赖安装脚本和桌面快捷键适配尚未发布。
+- X11 和 niri 之外的 Wayland 合成器尚未提供自动快捷键配置。
 
-- 单词或短专业术语：只返回 1～4 个最可能的简短中文意思。
-- 句子、段落或文章：只返回一份完整中文译文。
-- Markdown 每条只记录原文一行、翻译一行，不记录例句、解释、来源或时间。
+全局选择依赖 Wayland 主选区，因此需要 `wl-clipboard`。结果窗口使用 Zenity，异常通知使用 `notify-send`。
 
-也可以单次查询：
+## 从 Git 仓库安装（Arch Linux）
 
 ```bash
-sdf "race condition"
+git clone <你的仓库地址>
+cd translat-tool-goko
+./install.sh
 ```
 
-## 配置或切换大模型
+安装器会检查并按需安装 `python`、`wl-clipboard`、`zenity` 和 `libnotify`，然后：
 
-运行：
+- 将应用安装到 `~/.local/share/sdf-translator/app`；
+- 将 `sdf` 和 `sdf-global` 安装到 `~/.local/bin`；
+- 检测到 niri 时配置 `Super+Shift+T`；
+- 检测到 Vim/Neovim 时安装可视选择同步插件；
+- 将配置放在 `~/.config/sdf-translator`。
+
+无人值守安装：
+
+```bash
+./install.sh --yes
+```
+
+可选参数：
+
+```text
+--skip-deps     不安装缺失的 Arch 依赖
+--skip-hotkey   不修改 niri 快捷键配置
+--skip-editor   不安装 Vim/Neovim 选择同步插件
+```
+
+如果终端找不到 `sdf`，请确认 `~/.local/bin` 已加入 `PATH`。安装后不需要保留克隆目录；后续可重新克隆并运行同一个安装脚本覆盖升级。
+
+仓库也包含 `packaging/arch/PKGBUILD`，供本地打包和以后发布 AUR 使用。当前还没有发布到 AUR，因此不能直接执行 `yay -S sdf-translator`。
+
+## 快速使用
+
+首次选择大模型：
 
 ```bash
 sdf --setup
 ```
 
-可选择：
+进入交互模式：
 
-1. DeepSeek（默认推荐）
-2. 智谱 GLM-4.7-Flash（免费）
-3. Gemini
-4. 任意 OpenAI Chat Completions 兼容接口
-5. 不使用大模型，只使用免费备用翻译
+```bash
+sdf
+```
 
-DeepSeek API Key 可在这里创建：
+单次翻译：
 
-https://platform.deepseek.com/api_keys
+```bash
+sdf "race condition"
+sdf "Esta es una oración completa."
+```
 
-截至 2026-07-26，默认使用 `deepseek-v4-flash`。旧名称 `deepseek-chat` 已于
-2026-07-24 停用，因此不要再填写旧模型名。
+在图形程序中使用时，先用鼠标选中文字，再按 `Super+Shift+T`。如果没有主选区，程序不会静默翻译旧剪贴板，而是显示普通剪贴板内容并请求确认。正常成功只出现一个翻译结果窗口。
 
-粘贴 API Key 时终端不会显示字符，这是正常的安全保护。Key 保存在
-`/home/shuqi/repo/AI/translat-tool-goko/config.env`，权限为 600（仅当前用户可读写）。
+## Vim 和 Neovim
 
-智谱免费模型的 API Key 可在这里创建：
+终端 Vim/Neovim 的可视选择原本只存在于编辑器内部，Wayland 无法直接读取，这会造成全局快捷键拿到其他程序遗留的旧选区。安装器附带的插件会在 Visual 模式中同步当前选择，并在离开选择后安全清理自己写入的主选区。
 
-https://bigmodel.cn/usercenter/proj-mgmt/apikeys
+不需要配置按键：进入 Visual 模式选中文字，然后按全局快捷键即可。若不需要该行为，可以在编辑器配置中设置：
 
-智谱内置配置使用 `glm-4.7-flash` 和通用端点
-`https://open.bigmodel.cn/api/paas/v4`。它不会影响 DeepSeek 配置；通过
-`sdf --setup` 可以随时来回切换。
+```vim
+let g:sdf_selection_sync = 0
+```
 
-## 支持哪些大模型
+Neovim Lua 配置写法：
 
-除了内置的 DeepSeek、智谱和 Gemini，还支持采用 OpenAI Chat Completions 格式的服务。
-配置自定义服务时只需要提供：
+```lua
+vim.g.sdf_selection_sync = 0
+```
 
-- 服务名称
-- API Base URL
-- 模型名称
-- API Key
+## 翻译规则
 
-例如 OpenAI、硅基流动、OpenRouter、Moonshot，以及其他提供
-`POST /chat/completions` 兼容接口的平台。不同平台的具体 Base URL 和模型名需要以
-其官方文档为准。
+- 自动识别英语、日语、西班牙语等任意输入语言，并输出简体中文。
+- 单词或不超过五个词的短术语：返回按可能性排序的 2～3 个常用中文意思。
+- 句子、段落或文章：只返回一份完整译文，不解释、不总结、不遗漏最后一行。
+- `:domain` 设置专业领域后，句子和术语优先采用该领域的通行译法。
+- 最多处理 12000 个字符；免密备用服务会自动分块处理较长输入。
 
-## 交互命令
-
-- `:paste`：可靠的多行粘贴模式，粘贴完成后单独输入 `:end`
-- `:provider`：查看当前大模型
-- `:setup`：切换大模型或重新设置 API Key
-- `:domain embedded systems`：设置本次会话的专业领域
-- `:domain`：查看当前专业领域
-- `:save off` / `:save on`：临时关闭或开启自动归档
-- `:file`：显示生词本路径
-- `:help`：查看帮助
-- `:quit`：退出
-
-## 降级顺序
-
-1. 优先调用当前配置的大模型，按照输入类型返回简短词义或完整译文。
-2. 大模型请求失败时，终端显示服务名称和具体失败原因。
-3. 自动调用 MyMemory 继续翻译；长文本会分块，任何一块失败都不会保存残缺译文。
-4. 备用结果成功后照常保存到 Markdown。
-
-## 多行粘贴
-
-现代终端可以直接粘贴多行英文，程序会把整次粘贴作为一个查询，并将换行合并为空格。
-如果当前终端仍将粘贴内容拆成多次输入，使用：
+终端直接粘贴多行通常会作为一次输入读取。如果终端仍将内容拆成多次提交，可使用可靠粘贴模式：
 
 ```text
-English> :paste
-请粘贴多行英文；完成后另起一行输入 :end
+Text> :paste
+请粘贴多行文本；完成后另起一行输入 :end
 ... 第一行
 ... 第二行
 ... :end
 ```
 
-## 手工配置格式
+## 模型与免费 API
 
-通常不需要手工修改；如有需要，可编辑 `config.env`：
+内置提供商包括：
+
+- 智谱 GLM-4.7-Flash（免费模型）；
+- Groq Free；
+- OpenRouter Free Router；
+- GitHub Models；
+- Google Gemini；
+- 硅基流动免费模型；
+- DeepSeek（低成本付费）；
+- 任意 OpenAI Chat Completions 兼容接口。
+
+免费额度、速率限制、可用模型和地区政策会变化。随时运行下面的命令查看各平台 API Key 获取入口和当前内置说明：
+
+```bash
+sdf --free-api-help
+```
+
+交互模式中对应命令是 `:free-api`。推荐先尝试智谱、Groq 或 OpenRouter；已有 DeepSeek 余额时也可继续使用 DeepSeek。配置的模型调用失败后，会明确显示“服务名翻译失败：原因”，再使用免密机器翻译完成降级。
+
+免密降级服务不需要 API Key，主要用于保持翻译可用；术语释义的完整性和专业领域理解通常不如大模型。
+
+## 生词本与保存策略
+
+新安装默认不保存任何翻译，也不会擅自创建生词本。先设置 Markdown 文件路径，再选择保存模式：
+
+```bash
+sdf --set-save-path ~/Documents/vocabulary.md
+sdf --set-save-mode terms
+```
+
+支持四种模式：
+
+- `off`：关闭保存，也是新安装默认值；
+- `all`：保存全部翻译；
+- `terms`：只保存单词和短术语；
+- `texts`：只保存句子、段落和文章。
+
+也可以运行 `sdf --settings` 交互配置，或在 `sdf` 中使用：
+
+```text
+:save
+:save off|all|terms|texts
+:save-path <Markdown 文件路径>
+:settings
+:file
+```
+
+Markdown 每条记录只有粗体原文一行和中文翻译一行；不会写入内部键、来源、时间或解释。相同原文不会重复保存。
+
+## 常用交互命令
+
+```text
+:paste                    多行粘贴，以单独一行 :end 结束
+:domain <领域>            设置当前专业领域
+:domain                   查看当前领域
+:provider                 查看当前提供商和模型
+:free-api                 查看免费 API 获取方法
+:setup                    配置或切换大模型
+:save                     查看保存设置
+:save off|all|terms|texts 设置保存类型
+:save-path <路径>         设置 Markdown 生词本路径
+:settings                 交互配置生词本
+:file                     查看生词本路径
+:help                     查看帮助
+:quit                     退出
+```
+
+## 配置和隐私
+
+安装版的私密配置文件是 `~/.config/sdf-translator/config.env`，程序会将权限设为 `600`。仓库中的 `config.example` 只展示格式，不含真实凭据。源码目录中的 `config.env`、`.history`、`vocabulary.md`、`learn/`、缓存和构建产物均被 Git 忽略。
+
+模型翻译会把选中的原文发送给所配置的第三方 API；免密降级会发送给机器翻译服务。程序会在外发前拦截高置信度的 API Key、Bearer Token、私钥和密码形式内容，但它不能代替人工保密判断，请勿选择包含隐私或机密的数据。
+
+手工配置示例：
 
 ```text
 PROVIDER=deepseek
 PROVIDER_NAME=DeepSeek
-API_KEY=你的_Key
+API_KEY=你的_API_Key
 BASE_URL=https://api.deepseek.com
 MODEL=deepseek-v4-flash
 TRANSLATION_DOMAIN=computer science
+SAVE_MODE=terms
+VOCABULARY_FILE=/home/your-name/Documents/vocabulary.md
 ```
 
-自定义 OpenAI 兼容服务：
+通常优先使用 `sdf --setup` 和 `sdf --settings`，无需手改文件。
+
+## PDF、Word 和 OCR
+
+DOC/DOCX 并不保证总能直接选中文字，PDF 也一样：文件可能只有扫描图片、字体编码异常、加密或由查看器限制复制。判断方法很简单——如果能选中并复制出正常文字，就能直接翻译；只能框出一块图片或复制后为空/乱码，就需要 OCR。
+
+OCR（光学字符识别）是把图片中的文字识别为可复制文本。SDF Translator 当前不内置 OCR；扫描版文档需先使用阅读器、WPS 或系统工具的 OCR 功能，再选择识别结果翻译。
+
+## 卸载
+
+保留配置和生词本：
+
+```bash
+./uninstall.sh
+```
+
+同时清除 SDF 的 XDG 配置和状态目录：
+
+```bash
+./uninstall.sh --purge
+```
+
+自定义到其他路径的生词本不会被卸载器删除。卸载器也不会还原 niri 中的快捷键行，避免误删用户后来修改过的配置；如不再需要，请手工删除 `Mod+Shift+T` 对应绑定。
+
+## 开发
+
+项目采用 `src` 包布局：
 
 ```text
-PROVIDER=openai-compatible
-PROVIDER_NAME=服务名称
-API_KEY=你的_Key
-BASE_URL=https://服务商地址/v1
-MODEL=模型名称
+src/sdf_translate/    翻译核心、终端、桌面入口、提供商和存储
+editor/               Vim/Neovim Wayland 选择适配
+packaging/arch/       Arch PKGBUILD
+packaging/bin/        安装后的命令启动器
+scripts/              桌面环境配置脚本
+tests/                标准库 unittest 测试
 ```
 
-智谱免费模型：
+运行测试：
 
-```text
-PROVIDER=zhipu
-PROVIDER_NAME=智谱 GLM
-API_KEY=你的_Key
-BASE_URL=https://open.bigmodel.cn/api/paas/v4
-MODEL=glm-4.7-flash
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -v
 ```
-
-如果终端已经设置 `HTTPS_PROXY`，无需在配置文件中重复填写。
