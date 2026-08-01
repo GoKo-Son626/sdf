@@ -16,6 +16,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from . import __version__
 from .paths import config_file, history_file
 from .providers import PROVIDER_PRESETS, free_provider_help
 from .storage import SAVE_MODES, archive_result, save_mode, vocabulary_path
@@ -59,11 +60,6 @@ def load_config() -> dict[str, str]:
 
     # Generic environment variables take precedence.
     env_map = {
-        "ASDF_PROVIDER": "PROVIDER",
-        "ASDF_PROVIDER_NAME": "PROVIDER_NAME",
-        "ASDF_API_KEY": "API_KEY",
-        "ASDF_BASE_URL": "BASE_URL",
-        "ASDF_MODEL": "MODEL",
         "SDF_PROVIDER": "PROVIDER",
         "SDF_PROVIDER_NAME": "PROVIDER_NAME",
         "SDF_API_KEY": "API_KEY",
@@ -341,7 +337,12 @@ def json_request(
     timeout: float = 20,
 ) -> Any:
     body = None
-    request_headers = {"User-Agent": "terminal-english-assistant/1.0"}
+    request_headers = {
+        "User-Agent": (
+            f"sdf-translator/{__version__} "
+            "(+https://github.com/GoKo-Son626/sdf)"
+        )
+    }
     if headers:
         request_headers.update(headers)
     if data is not None:
@@ -809,7 +810,7 @@ def translate_with_fallback(query: str) -> dict[str, Any]:
         responses = list(pool.map(safe_google_translate, chunks))
     failures = [error for translated, error in responses if not translated]
     if failures:
-        # MyMemory remains a keyless backup for the original English use case.
+        # MyMemory remains a second keyless backup when Google is unavailable.
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=min(4, len(chunks))
         ) as pool:

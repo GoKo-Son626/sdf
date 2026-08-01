@@ -6,6 +6,31 @@ from sdf_translate.providers import PROVIDER_PRESETS, free_provider_help
 
 
 class ProviderPresetTests(unittest.TestCase):
+    def test_http_user_agent_uses_current_project_identity(self) -> None:
+        request = None
+
+        def capture(request_value, timeout):
+            nonlocal request
+            request = request_value
+            class Response:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *args):
+                    return None
+
+                def read(self):
+                    return b"{}"
+
+            return Response()
+
+        with patch.object(cli.urllib.request, "urlopen", side_effect=capture):
+            cli.json_request("https://example.invalid")
+        self.assertIsNotNone(request)
+        user_agent = request.get_header("User-agent")
+        self.assertIn("sdf-translator/", user_agent)
+        self.assertIn("GoKo-Son626/sdf", user_agent)
+
     def test_provider_ids_are_unique(self) -> None:
         ids = [item.provider_id for item in PROVIDER_PRESETS]
         self.assertEqual(len(ids), len(set(ids)))

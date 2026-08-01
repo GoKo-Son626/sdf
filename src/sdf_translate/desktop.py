@@ -207,7 +207,7 @@ def main() -> int:
             notify("正在翻译", "已有一个翻译任务正在运行")
             return 0
 
-        text, input_source = select_input()
+        text, _ = select_input()
         if not text:
             notify(
                 "没有检测到文字",
