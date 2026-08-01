@@ -26,4 +26,8 @@ package() {
     "$pkgdir/usr/share/doc/sdf-translator/README.md"
   install -Dm644 "$project_root/config.example" \
     "$pkgdir/usr/share/doc/sdf-translator/config.example"
+  install -Dm644 "$project_root/editor/nvim/sdf-selection.lua" \
+    "$pkgdir/usr/share/nvim/site/plugin/sdf-selection.lua"
+  install -Dm644 "$project_root/editor/vim/sdf-selection.vim" \
+    "$pkgdir/usr/share/vim/vimfiles/plugin/sdf-selection.vim"
 }

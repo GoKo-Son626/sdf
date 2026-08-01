@@ -26,6 +26,8 @@ require_safe_path "$data_home/sdf-translator"
 require_safe_path "$state_home/sdf-translator"
 
 rm -f "$bin_dir/sdf" "$bin_dir/sdf-global"
+rm -f "$config_home/nvim/plugin/sdf-selection.lua" \
+  "$HOME/.vim/plugin/sdf-selection.vim"
 rm -rf "$install_root"
 
 if "$purge"; then

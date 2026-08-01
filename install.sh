@@ -8,6 +8,7 @@ install_root=${SDF_INSTALL_ROOT:-"$data_home/sdf-translator/app"}
 bin_dir=${SDF_BIN_DIR:-"$HOME/.local/bin"}
 skip_deps=false
 skip_hotkey=false
+skip_editor=false
 assume_yes=false
 
 require_safe_path() {
@@ -21,7 +22,7 @@ require_safe_path() {
 }
 
 usage() {
-  echo "Usage: ./install.sh [--yes] [--skip-deps] [--skip-hotkey]"
+  echo "Usage: ./install.sh [--yes] [--skip-deps] [--skip-hotkey] [--skip-editor]"
 }
 
 for arg in "$@"; do
@@ -29,6 +30,7 @@ for arg in "$@"; do
     --yes|-y) assume_yes=true ;;
     --skip-deps) skip_deps=true ;;
     --skip-hotkey) skip_hotkey=true ;;
+    --skip-editor) skip_editor=true ;;
     --help|-h) usage; exit 0 ;;
     *) echo "Unknown option: $arg" >&2; usage >&2; exit 2 ;;
   esac
@@ -67,9 +69,24 @@ find "$install_root" -type d -name __pycache__ -prune -exec rm -rf {} +
 install -m 755 "$project_root/packaging/bin/sdf" "$bin_dir/sdf"
 install -m 755 "$project_root/packaging/bin/sdf-global" "$bin_dir/sdf-global"
 
-if [[ ! -f "$config_home/sdf-translator/config.env" ]]; then
+if [[ ! -f "$config_home/sdf-translator/config.env" && -f "$project_root/config.env" ]]; then
+  # Preserve an existing source-checkout configuration during migration.
+  install -m 600 "$project_root/config.env" \
+    "$config_home/sdf-translator/config.env"
+elif [[ ! -f "$config_home/sdf-translator/config.env" ]]; then
   install -m 600 "$project_root/config.example" \
     "$config_home/sdf-translator/config.example"
+fi
+
+if ! "$skip_editor"; then
+  if command -v nvim >/dev/null 2>&1; then
+    install -Dm644 "$project_root/editor/nvim/sdf-selection.lua" \
+      "$config_home/nvim/plugin/sdf-selection.lua"
+  fi
+  if command -v vim >/dev/null 2>&1; then
+    install -Dm644 "$project_root/editor/vim/sdf-selection.vim" \
+      "$HOME/.vim/plugin/sdf-selection.vim"
+  fi
 fi
 
 if ! "$skip_hotkey" && [[ -f "$config_home/niri/config.kdl" ]]; then
