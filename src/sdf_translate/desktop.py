@@ -4,10 +4,8 @@
 from __future__ import annotations
 
 import fcntl
-import json
 import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
@@ -117,10 +115,19 @@ def translate(text: str) -> dict[str, object]:
     return payload
 
 
-def show_long_result(query: str, translation: str, source: str) -> None:
+def show_translation_result(
+    query: str,
+    translation: str,
+    source: str,
+    *,
+    is_term: bool,
+    archive_status: str = "",
+) -> None:
     content = f"原文\n{query}\n\n翻译\n{translation}"
     if source:
         content += f"\n\n来源：{source}"
+    if archive_status:
+        content += f"\n归档：{archive_status}"
     temp_path = ""
     try:
         with tempfile.NamedTemporaryFile(
@@ -137,8 +144,8 @@ def show_long_result(query: str, translation: str, source: str) -> None:
                 "zenity",
                 "--text-info",
                 "--title=翻译结果",
-                "--width=760",
-                "--height=480",
+                f"--width={560 if is_term else 760}",
+                f"--height={260 if is_term else 480}",
                 "--ok-label=关闭",
                 "--font=Sans 12",
                 f"--filename={temp_path}",
@@ -153,7 +160,7 @@ def show_long_result(query: str, translation: str, source: str) -> None:
                 pass
 
 
-def show_result(payload: dict[str, object], input_source: str) -> None:
+def show_result(payload: dict[str, object]) -> None:
     if not payload.get("ok"):
         warnings = payload.get("warnings") or []
         warning_text = "\n".join(str(item) for item in warnings)
@@ -170,17 +177,19 @@ def show_result(payload: dict[str, object], input_source: str) -> None:
     if warnings:
         notify("翻译备用提示", "\n".join(str(item) for item in warnings))
 
-    if payload.get("kind") == "term":
-        notify(query or "翻译结果", translation)
-    else:
-        show_long_result(query, translation, source)
-
     vocabulary_file = str(payload.get("vocabulary_file") or "vocabulary.md")
-    saved_text = "已保存到" if payload.get("saved") else "已存在，未重复保存"
-    notify(
-        "翻译完成",
-        f"{input_source} · {saved_text}\n{vocabulary_file}",
-        "low",
+    if payload.get("saved") is True:
+        archive_status = f"已保存到 {vocabulary_file}"
+    elif payload.get("saved") is False:
+        archive_status = "未保存或已有相同记录"
+    else:
+        archive_status = ""
+    show_translation_result(
+        query,
+        translation,
+        source,
+        is_term=payload.get("kind") == "term",
+        archive_status=archive_status,
     )
 
 
@@ -208,9 +217,8 @@ def main() -> int:
             )
             return 1
 
-        notify("正在翻译", f"已读取{input_source}，正在调用翻译服务…", "low")
         payload = translate(text)
-        show_result(payload, input_source)
+        show_result(payload)
         return 0 if payload.get("ok") else 1
 
 
