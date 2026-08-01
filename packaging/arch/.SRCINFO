@@ -1,5 +1,5 @@
 pkgbase = sdf-translator-git
-	pkgdesc = Fast global AI translation to Simplified Chinese
+	pkgdesc = 将多语言内容快速翻译为简体中文的全局 AI 翻译工具
 	pkgver = r13.e653d0a
 	pkgrel = 1
 	url = https://github.com/GoKo-Son626/sdf
@@ -10,9 +10,9 @@ pkgbase = sdf-translator-git
 	depends = wl-clipboard
 	depends = zenity
 	depends = libnotify
-	optdepends = niri: compositor hotkey integration
-	optdepends = neovim: Visual selection integration
-	optdepends = vim: Visual selection integration
+	optdepends = niri: 合成器全局快捷键集成
+	optdepends = neovim: 可视选择集成
+	optdepends = vim: 可视选择集成
 	provides = sdf-translator=r13.e653d0a
 	conflicts = sdf-translator
 	source = sdf-translator::git+https://github.com/GoKo-Son626/sdf.git

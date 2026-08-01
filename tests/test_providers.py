@@ -40,7 +40,7 @@ class ProviderPresetTests(unittest.TestCase):
         help_text = free_provider_help()
         self.assertIn("OpenRouter", help_text)
         self.assertIn("Groq", help_text)
-        self.assertIn("GitHub Models", help_text)
+        self.assertIn("GitHub 模型", help_text)
         self.assertNotIn("Bearer ", help_text)
 
     def test_builtin_openai_compatible_provider_is_routed(self) -> None:

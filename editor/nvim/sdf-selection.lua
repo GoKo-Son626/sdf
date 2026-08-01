@@ -1,5 +1,5 @@
--- Keep Neovim's Visual selection in Wayland's primary selection so the
--- compositor-level SDF hotkey receives the text currently highlighted here.
+-- 将 Neovim 可视选择同步到 Wayland 主选区，使合成器级 SDF 快捷键能够
+-- 读取编辑器中当前高亮的文字。
 if vim.g.sdf_selection_sync == 0 or vim.fn.executable("wl-copy") == 0 then
   return
 end

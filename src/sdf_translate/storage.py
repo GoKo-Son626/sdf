@@ -1,4 +1,4 @@
-"""Configurable Markdown vocabulary storage."""
+"""可配置的 Markdown 生词本存储。"""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def ensure_vocabulary_file(path: Path) -> None:
     if path.exists():
         return
     path.write_text(
-        "# Translation Vocabulary\n\n"
+        "# 翻译生词本\n\n"
         "> 原文一行，翻译一行。由 `sdf` 按用户保存策略自动记录。\n\n",
         encoding="utf-8",
     )

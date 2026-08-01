@@ -1,8 +1,8 @@
-# SDF Translator
+# SDF 翻译工具
 
 [![CI](https://github.com/GoKo-Son626/sdf/actions/workflows/ci.yml/badge.svg)](https://github.com/GoKo-Son626/sdf/actions/workflows/ci.yml)
 
-SDF Translator 是一个面向 Linux 的轻量级全局 AI 翻译工具。它可以在终端中交互使用，也可以在 PDF 阅读器、WPS、浏览器、Vim/Neovim 等程序里选中文字后按全局快捷键翻译。输入语言会自动识别，输出统一为简体中文。
+SDF 翻译工具是一个面向 Linux 的轻量级全局 AI 翻译工具。它可以在终端中交互使用，也可以在 PDF 阅读器、WPS、浏览器、Vim/Neovim 等程序里选中文字后按全局快捷键翻译。输入语言会自动识别，输出统一为简体中文。
 
 核心行为很克制：单词和短术语返回 2～3 个最常用的中文意思，并显示为右上角紧凑通知；句子、段落和文章只返回一份完整、连贯并贴合所设专业领域的译文，使用较大的结果窗口。两种结果都只在译文下面标出所用模型，失败或降级时才发出额外通知。
 
@@ -49,6 +49,8 @@ cd sdf
 
 仓库也包含遵循 VCS 包规范的 `packaging/arch/PKGBUILD` 和发布说明，供以后发布 `sdf-translator-git` AUR 包使用。当前还没有发布到 AUR，因此不能直接执行 `yay -S sdf-translator-git`；建立独立 AUR 仓库并填写维护者信息后才能发布。
 
+具体上线步骤见 [AUR 打包与发布说明](packaging/arch/README.md)。核心流程是注册 AUR 账户并添加 SSH 公钥、克隆独立的 `sdf-translator-git` AUR 仓库、本地运行 `makepkg` 和 `namcap`、重新生成 `.SRCINFO`，最后将 `PKGBUILD` 与 `.SRCINFO` 推送到 AUR。
+
 ## 快速使用
 
 首次选择大模型：
@@ -82,7 +84,7 @@ sdf "Esta es una oración completa."
 let g:sdf_selection_sync = 0
 ```
 
-Neovim Lua 配置写法：
+Neovim 的 Lua 配置写法：
 
 ```lua
 vim.g.sdf_selection_sync = 0
@@ -111,15 +113,15 @@ Text> :paste
 内置提供商包括：
 
 - 智谱 GLM-4.7-Flash（免费模型）；
-- Groq Free；
-- OpenRouter Free Router；
-- GitHub Models；
-- Google Gemini；
+- Groq 免费层；
+- OpenRouter 免费路由；
+- GitHub 模型；
+- 谷歌 Gemini；
 - 硅基流动免费模型；
 - DeepSeek（低成本付费）；
-- 任意 OpenAI Chat Completions 兼容接口。
+- 任意兼容 OpenAI 对话补全格式的接口。
 
-免费额度、速率限制、可用模型和地区政策会变化。随时运行下面的命令查看各平台 API Key 获取入口和当前内置说明：
+免费额度、速率限制、可用模型和地区政策会变化。随时运行下面的命令查看各平台 API 密钥获取入口和当前内置说明：
 
 ```bash
 sdf --free-api-help
@@ -127,7 +129,7 @@ sdf --free-api-help
 
 交互模式中对应命令是 `:free-api`。推荐先尝试智谱、Groq 或 OpenRouter；已有 DeepSeek 余额时也可继续使用 DeepSeek。配置的模型调用失败后，会明确显示“服务名翻译失败：原因”，再使用免密机器翻译完成降级。
 
-免密降级服务不需要 API Key，主要用于保持翻译可用；术语释义的完整性和专业领域理解通常不如大模型。
+免密降级服务不需要 API 密钥，主要用于保持翻译可用；术语释义的完整性和专业领域理解通常不如大模型。
 
 ## 生词本与保存策略
 
@@ -179,7 +181,7 @@ Markdown 每条记录只有粗体原文一行和中文翻译一行；不会写�
 
 安装版的私密配置文件是 `~/.config/sdf-translator/config.env`，程序会将权限设为 `600`。仓库中的 `config.example` 只展示格式，不含真实凭据。源码目录中的 `config.env`、`.history`、`vocabulary.md`、`learn/`、缓存和构建产物均被 Git 忽略。
 
-模型翻译会把选中的原文发送给所配置的第三方 API；免密降级会发送给机器翻译服务。程序会在外发前拦截高置信度的 API Key、Bearer Token、私钥和密码形式内容，但它不能代替人工保密判断，请勿选择包含隐私或机密的数据。
+模型翻译会把选中的原文发送给所配置的第三方接口；免密降级会发送给机器翻译服务。程序会在外发前拦截高置信度的 API 密钥、Bearer 令牌、私钥和密码形式内容，但它不能代替人工保密判断，请勿选择包含隐私或机密的数据。
 
 手工配置示例：
 
@@ -189,7 +191,7 @@ PROVIDER_NAME=DeepSeek
 API_KEY=你的_API_Key
 BASE_URL=https://api.deepseek.com
 MODEL=deepseek-v4-flash
-TRANSLATION_DOMAIN=computer science
+TRANSLATION_DOMAIN=计算机科学
 SAVE_MODE=terms
 VOCABULARY_FILE=/home/your-name/Documents/vocabulary.md
 ```
@@ -200,7 +202,7 @@ VOCABULARY_FILE=/home/your-name/Documents/vocabulary.md
 
 DOC/DOCX 并不保证总能直接选中文字，PDF 也一样：文件可能只有扫描图片、字体编码异常、加密或由查看器限制复制。判断方法很简单——如果能选中并复制出正常文字，就能直接翻译；只能框出一块图片或复制后为空/乱码，就需要 OCR。
 
-OCR（光学字符识别）是把图片中的文字识别为可复制文本。SDF Translator 当前不内置 OCR；扫描版文档需先使用阅读器、WPS 或系统工具的 OCR 功能，再选择识别结果翻译。
+OCR（光学字符识别）是把图片中的文字识别为可复制文本。SDF 翻译工具当前不内置 OCR；扫描版文档需先使用阅读器、WPS 或系统工具的 OCR 功能，再选择识别结果翻译。
 
 ## 卸载
 
@@ -238,10 +240,10 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 python scripts/check_repository.py
 ```
 
-GitHub Actions 会在 Python 3.11 和 3.13 上执行语法检查、单元测试和仓库隐私检查。
+GitHub 自动化流程会在 Python 3.11 和 3.13 上执行语法检查、单元测试和仓库隐私检查。
 
 参与开发前请阅读 [贡献指南](CONTRIBUTING.md)；安全问题请按照 [安全策略](SECURITY.md) 私密报告。
 
 ## 许可证
 
-本项目采用 [MIT License](LICENSE)。
+本项目采用 [MIT 许可证](LICENSE)，同时提供[非官方中文翻译](LICENSE.zh-CN)方便阅读；法律含义以英文原版为准。

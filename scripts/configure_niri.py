@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install or update the SDF global shortcut in a niri config."""
+"""在 niri 配置中安装或更新 SDF 全局快捷键。"""
 
 from __future__ import annotations
 
@@ -18,20 +18,20 @@ def configure(config_file: Path, command: str) -> str:
     text = config_file.read_text(encoding="utf-8")
     binding = (
         "    Mod+Shift+T repeat=false allow-inhibiting=false "
-        'hotkey-overlay-title="Translate Selected Text" '
+        'hotkey-overlay-title="翻译选中文字" '
         f'{{ spawn "{command}"; }}'
     )
 
     if BIND_PATTERN.search(text):
         updated = BIND_PATTERN.sub(binding, text, count=1)
-        action = "updated"
+        action = "已更新"
     else:
         marker = re.search(r"^binds\s*\{\s*$", text, re.MULTILINE)
         if not marker:
             raise RuntimeError("niri 配置中没有找到 binds { 区块")
         insert_at = marker.end()
         updated = text[:insert_at] + "\n" + binding + text[insert_at:]
-        action = "installed"
+        action = "已安装"
 
     if updated != text:
         config_file.write_text(updated, encoding="utf-8")
@@ -48,7 +48,7 @@ def main() -> int:
     except RuntimeError as exc:
         print(f"niri 快捷键配置失败：{exc}")
         return 1
-    print(f"niri shortcut {action}: Super+Shift+T -> {args.command}")
+    print(f"niri 快捷键{action}：Super+Shift+T → {args.command}")
     return 0
 
 

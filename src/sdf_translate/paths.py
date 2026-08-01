@@ -1,4 +1,4 @@
-"""Resolve development and installed per-user runtime paths."""
+"""解析开发模式和安装模式下的用户运行路径。"""
 
 from __future__ import annotations
 

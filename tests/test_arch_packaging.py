@@ -17,7 +17,7 @@ class ArchPackagingTests(unittest.TestCase):
         self.assertIn("sha256sums=(SKIP)", text)
         self.assertIn("license=(MIT)", text)
 
-    @unittest.skipUnless(shutil.which("makepkg"), "makepkg is not installed")
+    @unittest.skipUnless(shutil.which("makepkg"), "未安装 makepkg")
     def test_srcinfo_matches_pkgbuild(self) -> None:
         generated = subprocess.run(
             ["makepkg", "--printsrcinfo"],

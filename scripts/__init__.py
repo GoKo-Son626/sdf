@@ -1,1 +1,1 @@
-"""Installer helper scripts."""
+"""安装器辅助脚本。"""

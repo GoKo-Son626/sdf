@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backward-compatible development entry point for the desktop command."""
+"""兼容旧用法的桌面翻译开发入口。"""
 
 from pathlib import Path
 import sys

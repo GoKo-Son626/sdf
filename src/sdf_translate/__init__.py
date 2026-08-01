@@ -1,3 +1,3 @@
-"""SDF Translator: fast AI-assisted translation to Simplified Chinese."""
+"""SDF 翻译工具：快速将多语言内容翻译为简体中文。"""
 
 __version__ = "0.1.0"

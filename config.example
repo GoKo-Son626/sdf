@@ -27,14 +27,14 @@ MODEL=deepseek-v4-flash
 # MODEL=gemini-2.5-flash
 
 # 其他内置免费/限速服务可直接运行 sdf --setup 选择：
-# - Groq Free
-# - OpenRouter Free Router
-# - GitHub Models
+# - Groq 免费层
+# - OpenRouter 免费路由
+# - GitHub 模型
 # - 硅基流动免费模型
-# 完整 API Key 获取地址可运行：sdf --free-api-help
+# 完整 API 密钥获取地址可运行：sdf --free-api-help
 
 # 可选：固定偏好的专业领域
-# TRANSLATION_DOMAIN=computer science
+# TRANSLATION_DOMAIN=计算机科学
 
 # 生词本默认关闭。设置完整路径后，再选择保存模式：
 # off（关闭）/ all（全部）/ terms（仅单词术语）/ texts（仅句子长文）

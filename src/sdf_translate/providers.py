@@ -1,4 +1,4 @@
-"""Built-in provider presets and free API onboarding information."""
+"""内置模型服务预设和免费接口申请说明。"""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ PROVIDER_PRESETS = (
     ),
     ProviderPreset(
         "groq",
-        "Groq Free",
+        "Groq 免费层",
         "https://api.groq.com/openai/v1",
         "qwen/qwen3.6-27b",
         "https://console.groq.com/keys",
@@ -38,7 +38,7 @@ PROVIDER_PRESETS = (
     ),
     ProviderPreset(
         "openrouter",
-        "OpenRouter Free Router",
+        "OpenRouter 免费路由",
         "https://openrouter.ai/api/v1",
         "openrouter/free",
         "https://openrouter.ai/settings/keys",
@@ -47,7 +47,7 @@ PROVIDER_PRESETS = (
     ),
     ProviderPreset(
         "github-models",
-        "GitHub Models",
+        "GitHub 模型",
         "https://models.github.ai/inference",
         "openai/gpt-4.1",
         "https://github.com/settings/tokens",
@@ -56,7 +56,7 @@ PROVIDER_PRESETS = (
     ),
     ProviderPreset(
         "gemini",
-        "Google Gemini",
+        "谷歌 Gemini",
         "",
         "gemini-2.5-flash",
         "https://aistudio.google.com/app/apikey",
@@ -75,7 +75,7 @@ PROVIDER_PRESETS = (
     ),
     ProviderPreset(
         "deepseek",
-        "DeepSeek",
+        "DeepSeek（深度求索）",
         "https://api.deepseek.com",
         "deepseek-v4-flash",
         "https://platform.deepseek.com/api_keys",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Translate the current Wayland primary selection from a global hotkey."""
+"""通过全局快捷键翻译当前 Wayland 主选区。"""
 
 from __future__ import annotations
 

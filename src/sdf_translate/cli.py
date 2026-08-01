@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Terminal multilingual translator: configurable LLM first, free fallback."""
+"""终端多语言翻译工具：优先使用可配置大模型，失败时自动降级。"""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ def load_config() -> dict[str, str]:
             key, value = line.split("=", 1)
             config[key.strip()] = value.strip().strip("\"'")
 
-    # Generic environment variables take precedence.
+    # 通用环境变量的优先级高于配置文件。
     env_map = {
         "SDF_PROVIDER": "PROVIDER",
         "SDF_PROVIDER_NAME": "PROVIDER_NAME",
@@ -75,7 +75,7 @@ def load_config() -> dict[str, str]:
         if os.environ.get(key):
             config[key] = os.environ[key]
 
-    # Convenient provider-specific environment variables.
+    # 同时兼容各服务商常用的专用环境变量。
     if os.environ.get("DEEPSEEK_API_KEY"):
         config.setdefault("PROVIDER", "deepseek")
         config["API_KEY"] = os.environ["DEEPSEEK_API_KEY"]
@@ -99,7 +99,7 @@ def load_config() -> dict[str, str]:
         if os.environ.get(env_key) and config.get("PROVIDER") == provider_id:
             config["API_KEY"] = os.environ[env_key]
 
-    # Migrate the original Gemini-only config without breaking existing users.
+    # 迁移早期仅支持 Gemini 的配置，避免升级后影响现有用户。
     if "PROVIDER" not in config and config.get("GEMINI_API_KEY"):
         config["PROVIDER"] = "gemini"
         config["PROVIDER_NAME"] = "Gemini"
@@ -255,7 +255,7 @@ def configure_provider() -> bool:
         none_choice = custom_choice + 1
         print(f"  {custom_choice}. 任意 OpenAI 兼容接口")
         print(f"  {none_choice}. 不使用大模型，只用免费备用翻译")
-        print("  h. 查看免费 API Key 获取方法")
+        print("  h. 查看免费 API 密钥获取方法")
         try:
             choice = input("请选择 [1]: ").strip().lower() or "1"
         except (EOFError, KeyboardInterrupt):
@@ -275,12 +275,12 @@ def configure_provider() -> bool:
             print(color("✓ 已设置为只使用免费备用翻译。", "32"))
             return True
         if choice == str(custom_choice):
-            print("适用于 OpenAI、Groq、OpenRouter、GitHub Models、硅基流动等接口。")
+            print("适用于 OpenAI、Groq、OpenRouter、GitHub 模型、硅基流动等接口。")
             provider_name = prompt_value("服务名称", "自定义大模型")
-            base_url = prompt_value("API Base URL（通常以 /v1 结尾）")
+            base_url = prompt_value("API 基础地址（通常以 /v1 结尾）")
             model = prompt_value("模型名称")
             if not base_url or not model:
-                print(color("Base URL 和模型名称不能为空。", "31"))
+                print(color("API 基础地址和模型名称不能为空。", "31"))
                 return False
             values = {
                 "PROVIDER": "openai-compatible",
@@ -288,14 +288,14 @@ def configure_provider() -> bool:
                 "BASE_URL": base_url,
                 "MODEL": model,
             }
-            key_label = f"{provider_name} API Key"
+            key_label = f"{provider_name} API 密钥"
             break
         try:
             preset = PROVIDER_PRESETS[int(choice) - 1]
         except (ValueError, IndexError):
             print(color("无效选择，请重新输入。", "31"))
             continue
-        print(f"API Key 获取地址：{preset.key_url}")
+        print(f"API 密钥获取地址：{preset.key_url}")
         print(f"说明：{preset.note}")
         model = prompt_value("模型名称", preset.model)
         values = {
@@ -305,17 +305,17 @@ def configure_provider() -> bool:
         }
         if preset.base_url:
             values["BASE_URL"] = preset.base_url
-        key_label = f"{preset.name} API Key"
+        key_label = f"{preset.name} API 密钥"
         break
 
-    print("粘贴时终端不会显示字符。")
+    print("粘贴 API 密钥时终端不会显示字符。")
     try:
         api_key = getpass.getpass(f"{key_label}: ").strip()
     except (EOFError, KeyboardInterrupt):
         print()
         return False
     if not api_key:
-        print(color("未输入 API Key，配置未改变。", "33"))
+        print(color("未输入 API 密钥，配置未改变。", "33"))
         return False
     values["API_KEY"] = api_key
     save_provider_config(values)
@@ -364,10 +364,10 @@ def readable_http_error(exc: urllib.error.HTTPError) -> str:
     except (json.JSONDecodeError, AttributeError, UnicodeDecodeError):
         pass
     common = {
-        400: "请求参数无效，可能是模型名称或 API Key 类型不正确",
-        401: "API Key 无效或已失效",
+        400: "请求参数无效，可能是模型名称或 API 密钥类型不正确",
+        401: "API 密钥无效或已失效",
         402: "账户余额不足或需要开通计费",
-        403: "API Key 没有权限、服务未开通或所在地区受限",
+        403: "API 密钥没有权限、服务未开通或所在地区受限",
         404: "接口地址或模型名称不存在",
         429: "API 余额、配额或请求频率已超限",
         500: "大模型服务内部错误",
@@ -381,7 +381,7 @@ def normalize_query(query: str) -> str:
 
 
 def sensitive_input_reason(query: str) -> str | None:
-    """Reject high-confidence credentials before any external API call."""
+    """在调用外部接口前拦截高置信度的凭据内容。"""
     checks = (
         (
             r"(?i)https?://\S*[?&](?:token|api[_-]?key|access[_-]?key|code)=",
@@ -393,7 +393,7 @@ def sensitive_input_reason(query: str) -> str | None:
         ),
         (
             r"(?i)\bsk-[A-Za-z0-9_-]{16,}\b|\bAIza[A-Za-z0-9_-]{20,}\b",
-            "包含疑似 API Key",
+            "包含疑似 API 密钥",
         ),
         (
             r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----",
@@ -413,7 +413,7 @@ def sensitive_input_reason(query: str) -> str | None:
 
 
 def is_short_term(query: str) -> bool:
-    """Treat a word or compact multilingual phrase as a term, not a sentence."""
+    """将单词或简短多语言短语识别为术语，而不是完整句子。"""
     normalized = normalize_query(query)
     words = re.findall(r"\w+(?:['_.+-]\w+)*", normalized, flags=re.UNICODE)
     sentence_marks = re.search(r"[.!?;。！？；]", normalized)
@@ -477,7 +477,7 @@ def parse_model_json(text: str) -> dict[str, Any]:
     try:
         result = json.loads(content)
     except json.JSONDecodeError as exc:
-        # Some compatible models add a short preface despite the instruction.
+        # 部分兼容模型会无视指令添加简短前言，因此尝试提取其中的对象。
         start, end = content.find("{"), content.rfind("}")
         if start < 0 or end <= start:
             raise RuntimeError("模型没有返回可解析的 JSON") from exc
@@ -518,7 +518,7 @@ def translate_with_gemini(
 ) -> dict[str, Any]:
     api_key = config.get("API_KEY", "").strip()
     if not api_key:
-        raise RuntimeError("尚未配置 Gemini API Key")
+        raise RuntimeError("尚未配置 Gemini API 密钥")
     model = config.get("MODEL", DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
     prompt = translation_prompt(query, domain)
     payload = {
@@ -582,9 +582,9 @@ def translate_with_openai_compatible(
     model = config.get("MODEL", "").strip()
     provider_name = config.get("PROVIDER_NAME", "大模型").strip() or "大模型"
     if not api_key:
-        raise RuntimeError(f"尚未配置 {provider_name} API Key")
+        raise RuntimeError(f"尚未配置 {provider_name} API 密钥")
     if not base_url or not model:
-        raise RuntimeError("API Base URL 或模型名称未配置")
+        raise RuntimeError("API 基础地址或模型名称未配置")
 
     prompt = translation_prompt(query, domain)
     payload: dict[str, Any] = {
@@ -601,8 +601,7 @@ def translate_with_openai_compatible(
         "response_format": {"type": "json_object"},
     }
     if config.get("PROVIDER") in ("deepseek", "zhipu"):
-        # Translation does not need a long reasoning trace. Both built-in
-        # providers support this switch; disabling it improves latency.
+        # 翻译不需要冗长推理轨迹；内置服务支持关闭思考以降低延迟。
         payload["thinking"] = {"type": "disabled"}
     url = chat_completions_url(base_url)
     headers = {"Authorization": f"Bearer {api_key}"}
@@ -612,7 +611,7 @@ def translate_with_openai_compatible(
                 url, method="POST", data=payload, headers=headers, timeout=40
             )
         except urllib.error.HTTPError as exc:
-            # A few OpenAI-compatible providers do not implement JSON mode.
+            # 少数 OpenAI 兼容服务没有实现 JSON 模式，因此在参数错误时重试。
             if exc.code != 400 or config.get("PROVIDER") == "deepseek":
                 raise
             payload.pop("response_format", None)
@@ -663,7 +662,7 @@ def translate_with_configured_model(
 
 
 def mymemory_lookup(text: str) -> dict[str, Any]:
-    # The public API has a 500-byte query limit. Avoid cutting a UTF-8 sequence.
+    # 公共接口限制查询不超过 500 字节，截断时不能破坏 UTF-8 字符。
     encoded = text.encode("utf-8")
     if len(encoded) > 480:
         encoded = encoded[:480]
@@ -688,13 +687,13 @@ def mymemory_lookup(text: str) -> dict[str, Any]:
 
 
 def google_translate_lookup(text: str) -> dict[str, Any]:
-    """Use Google's public web translation endpoint with language detection."""
+    """调用谷歌公开网页翻译接口并自动检测输入语言。"""
     params = urllib.parse.urlencode(
         {"client": "gtx", "sl": "auto", "tl": "zh-CN", "dt": "t", "q": text}
     )
     response = json_request(f"{GOOGLE_TRANSLATE_URL}?{params}", timeout=15)
     if not isinstance(response, list) or not response or not response[0]:
-        raise RuntimeError("Google 免费翻译返回内容为空")
+        raise RuntimeError("谷歌免费翻译返回内容为空")
     translated = "".join(
         str(segment[0])
         for segment in response[0]
@@ -748,10 +747,10 @@ def safe_mymemory(text: str) -> tuple[dict[str, Any] | None, str | None]:
     try:
         return mymemory_lookup(text), None
     except urllib.error.HTTPError as exc:
-        return None, f"MyMemory HTTP {exc.code}"
+        return None, f"MyMemory 接口错误 {exc.code}"
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         return None, f"MyMemory {exc}"
-    except Exception as exc:  # Keep fallback available even on unusual API data.
+    except Exception as exc:  # 即使接口返回异常结构，也要让后续降级流程继续。
         return None, f"MyMemory {type(exc).__name__}: {exc}"
 
 
@@ -759,26 +758,26 @@ def safe_google_translate(text: str) -> tuple[dict[str, Any] | None, str | None]
     try:
         return google_translate_lookup(text), None
     except urllib.error.HTTPError as exc:
-        return None, f"Google 免费翻译 HTTP {exc.code}"
+        return None, f"谷歌免费翻译接口错误 {exc.code}"
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        return None, f"Google 免费翻译 {exc}"
+        return None, f"谷歌免费翻译 {exc}"
     except Exception as exc:
-        return None, f"Google 免费翻译 {type(exc).__name__}: {exc}"
+        return None, f"谷歌免费翻译 {type(exc).__name__}：{exc}"
 
 
 def safe_dictionary(word: str) -> tuple[dict[str, Any] | None, str | None]:
     try:
         return dictionary_lookup(word), None
     except urllib.error.HTTPError as exc:
-        return None, f"Free Dictionary HTTP {exc.code}"
+        return None, f"免费词典接口错误 {exc.code}"
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        return None, f"Free Dictionary {exc}"
+        return None, f"免费词典 {exc}"
     except Exception as exc:
-        return None, f"Free Dictionary {type(exc).__name__}: {exc}"
+        return None, f"免费词典 {type(exc).__name__}：{exc}"
 
 
 def split_utf8_chunks(text: str, max_bytes: int = 450) -> list[str]:
-    """Split without dropping words so the public fallback API stays in limit."""
+    """在不丢词的前提下分块，使内容不超过公共备用接口限制。"""
     chunks: list[str] = []
     current = ""
     for token in re.findall(r"\S+\s*", text):
@@ -810,7 +809,7 @@ def translate_with_fallback(query: str) -> dict[str, Any]:
         responses = list(pool.map(safe_google_translate, chunks))
     failures = [error for translated, error in responses if not translated]
     if failures:
-        # MyMemory remains a second keyless backup when Google is unavailable.
+        # 谷歌不可用时，继续使用无需密钥的 MyMemory 作为第二级备用。
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=min(4, len(chunks))
         ) as pool:
@@ -858,7 +857,7 @@ def display_result(result: dict[str, Any]) -> None:
 def translate_machine(
     query: str, domain: str, config: dict[str, str]
 ) -> tuple[dict[str, Any], int]:
-    """Translate for editor/desktop integrations and emit no human UI text."""
+    """为编辑器和桌面集成执行翻译，不直接输出交互界面文字。"""
     query = normalize_query(query)
     if not query:
         return {"ok": False, "error": "没有收到可翻译的文字"}, 1
@@ -973,7 +972,7 @@ def setup_readline() -> None:
     try:
         import readline
 
-        # Keep an entire multi-line terminal paste in one editable input buffer.
+        # 将整段终端多行粘贴保留在同一个可编辑输入缓冲区中。
         readline.parse_and_bind("set enable-bracketed-paste on")
         if HISTORY_FILE.exists():
             readline.read_history_file(HISTORY_FILE)
@@ -993,13 +992,12 @@ def save_history() -> None:
 
 
 def read_interactive_input(prompt: str) -> str:
-    """Read one query and absorb lines that arrived in the same terminal paste."""
+    """读取一次查询，并吸收同一次终端粘贴中到达的后续行。"""
     first = input(prompt)
     if not sys.stdin.isatty():
         return first
     lines = [first]
-    # Bracketed paste handles modern terminals. This short drain is a fallback
-    # for terminals that submit each pasted line separately.
+    # 现代终端由括号粘贴模式处理；短暂排空用于兼容逐行提交粘贴的终端。
     while True:
         try:
             ready, _, _ = select.select([sys.stdin], [], [], 0.12)
@@ -1037,7 +1035,7 @@ HELP = """
   :domain <领域>  设置当前专业领域，例如 :domain embedded systems
   :domain          查看当前领域
   :provider        查看当前大模型和模型名称
-  :free-api        查看免费 API Key 获取方法
+  :free-api        查看免费 API 密钥获取方法
   :save             查看当前保存设置
   :save off|all|terms|texts  设置保存类型
   :save-path <路径> 设置 Markdown 生词本路径
@@ -1187,8 +1185,8 @@ def main() -> int:
         if config.get("HTTPS_PROXY"):
             os.environ["HTTPS_PROXY"] = config["HTTPS_PROXY"]
             os.environ["https_proxy"] = config["HTTPS_PROXY"]
-        # Reading until EOF preserves a complete multi-line selection, including
-        # its final line, and avoids command-line quoting/length problems.
+        # 读取到文件结束可完整保留多行选区（包括最后一行），同时避开命令行
+        # 引号转义和长度限制问题。
         query = sys.stdin.read()
         if not query and len(sys.argv) > 2:
             query = " ".join(sys.argv[2:])
