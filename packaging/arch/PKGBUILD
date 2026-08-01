@@ -1,27 +1,45 @@
 # Maintainer: SDF Translator contributors
 pkgname=sdf-translator-git
-pkgver=0.1.0
+pkgver=r13.e653d0a
 pkgrel=1
 pkgdesc="Fast global AI translation to Simplified Chinese"
 arch=(any)
-url="https://github.com/OWNER/sdf-translator"
+url="https://github.com/OWNER/translat-tool-goko"
 license=(MIT)
 depends=(python wl-clipboard zenity libnotify)
 makedepends=(git)
-provides=(sdf-translator)
+optdepends=(
+  "niri: compositor hotkey integration"
+  "neovim: Visual selection integration"
+  "vim: Visual selection integration"
+)
+provides=("sdf-translator=$pkgver")
 conflicts=(sdf-translator)
-source=()
-sha256sums=()
+source=("sdf-translator::git+$url.git")
+sha256sums=(SKIP)
+
+pkgver() {
+  cd "$srcdir/sdf-translator"
+  (
+    set -o pipefail
+    git describe --long --tags --abbrev=7 2>/dev/null \
+      | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' \
+      || printf "r%s.%s" \
+        "$(git rev-list --count HEAD)" \
+        "$(git rev-parse --short=7 HEAD)"
+  )
+}
 
 package() {
-  local project_root="$startdir/../.."
+  local project_root="$srcdir/sdf-translator"
 
   install -d "$pkgdir/usr/lib/sdf-translator"
   cp -a "$project_root/src/sdf_translate" "$pkgdir/usr/lib/sdf-translator/"
   find "$pkgdir/usr/lib/sdf-translator" -type d -name __pycache__ -prune -exec rm -rf {} +
 
-  install -Dm755 "$startdir/sdf" "$pkgdir/usr/bin/sdf"
-  install -Dm755 "$startdir/sdf-global" "$pkgdir/usr/bin/sdf-global"
+  install -Dm755 "$project_root/packaging/arch/sdf" "$pkgdir/usr/bin/sdf"
+  install -Dm755 "$project_root/packaging/arch/sdf-global" \
+    "$pkgdir/usr/bin/sdf-global"
   install -Dm644 "$project_root/README.md" \
     "$pkgdir/usr/share/doc/sdf-translator/README.md"
   install -Dm644 "$project_root/LICENSE" \

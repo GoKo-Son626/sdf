@@ -1,0 +1,21 @@
+pkgbase = sdf-translator-git
+	pkgdesc = Fast global AI translation to Simplified Chinese
+	pkgver = r13.e653d0a
+	pkgrel = 1
+	url = https://github.com/OWNER/translat-tool-goko
+	arch = any
+	license = MIT
+	makedepends = git
+	depends = python
+	depends = wl-clipboard
+	depends = zenity
+	depends = libnotify
+	optdepends = niri: compositor hotkey integration
+	optdepends = neovim: Visual selection integration
+	optdepends = vim: Visual selection integration
+	provides = sdf-translator=r13.e653d0a
+	conflicts = sdf-translator
+	source = sdf-translator::git+https://github.com/OWNER/translat-tool-goko.git
+	sha256sums = SKIP
+
+pkgname = sdf-translator-git

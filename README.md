@@ -45,7 +45,7 @@ cd translat-tool-goko
 
 如果终端找不到 `sdf`，请确认 `~/.local/bin` 已加入 `PATH`。安装后不需要保留克隆目录；后续可重新克隆并运行同一个安装脚本覆盖升级。
 
-仓库也包含 `packaging/arch/PKGBUILD`，供本地打包和以后发布 AUR 使用。当前还没有发布到 AUR，因此不能直接执行 `yay -S sdf-translator`。
+仓库也包含遵循 VCS 包规范的 `packaging/arch/PKGBUILD` 和发布说明，供以后发布 `sdf-translator-git` AUR 包使用。当前还没有发布到 AUR，因此不能直接执行 `yay -S sdf-translator-git`；配置 GitHub 地址和 AUR 维护者信息后才能发布。
 
 ## 快速使用
 
