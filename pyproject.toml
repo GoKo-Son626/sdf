@@ -10,6 +10,21 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = []
+keywords = ["translation", "wayland", "arch-linux", "niri", "cli"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/GoKo-Son626/sdf"
+Repository = "https://github.com/GoKo-Son626/sdf.git"
+Issues = "https://github.com/GoKo-Son626/sdf/issues"
 
 [project.scripts]
 sdf = "sdf_translate.cli:main"

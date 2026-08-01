@@ -1,5 +1,7 @@
 # SDF Translator
 
+[![CI](https://github.com/GoKo-Son626/sdf/actions/workflows/ci.yml/badge.svg)](https://github.com/GoKo-Son626/sdf/actions/workflows/ci.yml)
+
 SDF Translator 是一个面向 Linux 的轻量级全局 AI 翻译工具。它可以在终端中交互使用，也可以在 PDF 阅读器、WPS、浏览器、Vim/Neovim 等程序里选中文字后按全局快捷键翻译。输入语言会自动识别，输出统一为简体中文。
 
 核心行为很克制：单词和短术语返回 2～3 个最常用的中文意思，并显示为右上角紧凑通知；句子、段落和文章只返回一份完整、连贯并贴合所设专业领域的译文，使用较大的结果窗口。两种结果都只在译文下面标出所用模型，失败或降级时才发出额外通知。
@@ -16,8 +18,8 @@ SDF Translator 是一个面向 Linux 的轻量级全局 AI 翻译工具。它可
 ## 从 Git 仓库安装（Arch Linux）
 
 ```bash
-git clone <你的仓库地址>
-cd translat-tool-goko
+git clone https://github.com/GoKo-Son626/sdf.git
+cd sdf
 ./install.sh
 ```
 
