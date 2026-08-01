@@ -1,0 +1,29 @@
+# Maintainer: SDF Translator contributors
+pkgname=sdf-translator-git
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Fast global AI translation to Simplified Chinese"
+arch=(any)
+url="https://github.com/OWNER/sdf-translator"
+license=(custom)
+depends=(python wl-clipboard zenity libnotify)
+makedepends=(git)
+provides=(sdf-translator)
+conflicts=(sdf-translator)
+source=()
+sha256sums=()
+
+package() {
+  local project_root="$startdir/../.."
+
+  install -d "$pkgdir/usr/lib/sdf-translator"
+  cp -a "$project_root/src/sdf_translate" "$pkgdir/usr/lib/sdf-translator/"
+  find "$pkgdir/usr/lib/sdf-translator" -type d -name __pycache__ -prune -exec rm -rf {} +
+
+  install -Dm755 "$startdir/sdf" "$pkgdir/usr/bin/sdf"
+  install -Dm755 "$startdir/sdf-global" "$pkgdir/usr/bin/sdf-global"
+  install -Dm644 "$project_root/README.md" \
+    "$pkgdir/usr/share/doc/sdf-translator/README.md"
+  install -Dm644 "$project_root/config.example" \
+    "$pkgdir/usr/share/doc/sdf-translator/config.example"
+}
