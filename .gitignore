@@ -1,0 +1,13 @@
+config.env
+.history
+vocabulary.md
+learn/
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.coverage
+build/
+dist/
+*.pkg.tar.zst
+*.log

@@ -1,0 +1,33 @@
+# 复制为 config.env 后填写，或者运行 sdf --setup 交互配置。
+# 此文件只展示格式；真正的 config.env 权限会自动设置为 600。
+
+# DeepSeek（默认推荐）
+PROVIDER=deepseek
+PROVIDER_NAME=DeepSeek
+API_KEY=在这里填写_API_Key
+BASE_URL=https://api.deepseek.com
+MODEL=deepseek-v4-flash
+
+# 智谱免费模型：
+# PROVIDER=zhipu
+# PROVIDER_NAME=智谱 GLM
+# API_KEY=在这里填写_智谱_API_Key
+# BASE_URL=https://open.bigmodel.cn/api/paas/v4
+# MODEL=glm-4.7-flash
+
+# 任意 OpenAI 兼容服务只需替换下面三项：
+# PROVIDER=openai-compatible
+# PROVIDER_NAME=你的服务名称
+# BASE_URL=https://服务商地址/v1
+# MODEL=服务商提供的模型名称
+
+# Gemini 使用以下格式：
+# PROVIDER=gemini
+# PROVIDER_NAME=Gemini
+# MODEL=gemini-2.5-flash
+
+# 可选：固定偏好的专业领域
+# TRANSLATION_DOMAIN=computer science
+
+# 可选：终端没有设置系统代理时指定
+# HTTPS_PROXY=http://127.0.0.1:7890
