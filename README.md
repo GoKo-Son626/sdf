@@ -2,12 +2,13 @@
 
 # SDF Translator
 
-**Translate selected text anywhere on your Wayland desktop — fast, focused, and recall-friendly.**
+**Translate selected text anywhere on your Linux desktop — fast, focused, and recall-friendly.**
 
 [![CI](https://github.com/GoKo-Son626/sdf/actions/workflows/ci.yml/badge.svg)](https://github.com/GoKo-Son626/sdf/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform: Arch Linux](https://img.shields.io/badge/platform-Arch%20Linux-1793D1?logo=archlinux&logoColor=white)](#installation)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
+[![Display: Wayland + X11](https://img.shields.io/badge/display-Wayland%20%2B%20X11-6A5ACD)](#platform-support)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 
 `sdf` in the terminal · `Super+Shift+T` on the desktop · Markdown vocabulary on your terms
 
@@ -58,14 +59,22 @@ flowchart TD
 
 ## Platform support
 
-- **Supported now:** Arch Linux, Wayland, and niri.
+- **Supported now:** Arch Linux on Wayland or X11, with automatic shortcut setup for niri and Xfce.
+- **Installer support:** Arch Linux, Debian, and Ubuntu. Debian/Ubuntu support is newer and receives less CI coverage.
 - The terminal application uses Python's standard library and follows the XDG directory layout.
-- Automated installers for Ubuntu, Debian, Fedora, CentOS, and other desktop environments are planned.
-- Global selection requires `wl-clipboard`; long-result windows use Zenity and notifications use `notify-send`.
+- GNOME and KDE work with manual shortcut setup; automatic integration is planned.
+- Fedora, CentOS Stream, and other package managers are planned.
+
+| Component | Wayland | X11 |
+| --- | --- | --- |
+| Selection backend | `wl-clipboard` | `xclip`, with `xsel` fallback |
+| Compact results | Freedesktop notifications | Freedesktop notifications |
+| Long results | Zenity, Yad, or KDialog | Zenity, Yad, or KDialog |
+| Automatic shortcut | niri | Xfce |
 
 ## Installation
 
-### Arch Linux from Git
+### Arch Linux, Debian, or Ubuntu from Git
 
 ```bash
 git clone https://github.com/GoKo-Son626/sdf.git
@@ -73,11 +82,11 @@ cd sdf
 ./install.sh
 ```
 
-The installer checks `python`, `wl-clipboard`, `zenity`, and `libnotify`, then:
+The installer selects pacman or apt and checks Python, `wl-clipboard`, `xclip`, Zenity, and `notify-send`, then:
 
 - installs the application under `~/.local/share/sdf-translator/app`;
 - installs `sdf` and `sdf-global` under `~/.local/bin`;
-- configures `Super+Shift+T` when niri is detected;
+- configures `Super+Shift+T` when niri or Xfce is detected;
 - installs the Vim/Neovim visual-selection bridge when available;
 - stores configuration under `~/.config/sdf-translator`.
 
@@ -90,8 +99,8 @@ For unattended installation:
 Optional switches:
 
 ```text
---skip-deps     Do not install missing Arch dependencies
---skip-hotkey   Do not modify the niri configuration
+--skip-deps     Do not install missing system dependencies
+--skip-hotkey   Do not configure a desktop shortcut
 --skip-editor   Do not install the Vim/Neovim selection bridge
 ```
 
@@ -128,9 +137,18 @@ sdf --version
 sdf --doctor
 ```
 
-`sdf --doctor` checks Wayland, clipboard tools, result windows, notifications, configuration permissions, provider settings, and vocabulary settings. It never prints API keys.
+`sdf --doctor` checks the display server, active clipboard backend, result UI, notifications, shortcut support, configuration permissions, provider settings, and vocabulary settings. It never prints API keys.
 
 For desktop use, select text and press `Super+Shift+T`. If no primary selection exists, SDF shows the regular clipboard content and asks for confirmation instead of silently translating stale text.
+
+Configure or change the shortcut at any time:
+
+```bash
+sdf --hotkey
+sdf --hotkey Ctrl+Alt+G
+```
+
+SDF refuses to replace an occupied Xfce shortcut. After checking the conflict, explicitly allow replacement with `sdf --hotkey Ctrl+Alt+G --force`. On GNOME, KDE, or another unsupported desktop, run `sdf --hotkey-help`, open the desktop keyboard settings, and bind the displayed `sdf-global` command manually.
 
 ## Translation behavior
 
@@ -204,7 +222,7 @@ Each record contains one bold source line and one translation line. Internal key
 
 ## Vim and Neovim
 
-Terminal Vim/Neovim visual selections normally remain inside the editor, so Wayland may otherwise read a stale selection from another application. The bundled bridge synchronizes the active visual selection to Wayland and safely clears only the selection it created.
+Terminal Vim/Neovim visual selections normally remain inside the editor, so the desktop may otherwise read a stale selection from another application. The bundled bridge synchronizes the active visual selection through SDF's Wayland/X11 abstraction and safely clears only the selection it created.
 
 No editor-specific translation mapping is required: select text in Visual mode and press the global shortcut. Disable the bridge with:
 
@@ -244,13 +262,13 @@ Also remove SDF-managed XDG configuration and state:
 ./uninstall.sh --purge
 ```
 
-Vocabulary files stored at custom paths are never deleted. The uninstaller also leaves the niri shortcut line untouched to avoid removing later user edits; remove the `Mod+Shift+T` binding manually if no longer needed.
+Vocabulary files stored at custom paths are never deleted. The uninstaller leaves desktop shortcut settings untouched to avoid removing later user edits; remove the SDF binding in niri or Xfce settings if no longer needed.
 
 ## Development
 
 ```text
 src/sdf_translate/    Translation core, terminal UI, desktop UI, providers, storage
-editor/               Vim and Neovim Wayland selection bridges
+editor/               Vim and Neovim desktop-selection bridges
 packaging/arch/       Arch Linux and future AUR packaging
 packaging/bin/        Installed command launchers
 scripts/              Repository and desktop configuration tools
