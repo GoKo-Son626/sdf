@@ -36,14 +36,8 @@ for arg in "$@"; do
   esac
 done
 
-if [[ ! -f /etc/arch-release ]]; then
-  echo "This installer currently supports Arch Linux only." >&2
-  echo "The source layout is distro-neutral; Ubuntu and other installers will be added later." >&2
-  exit 1
-fi
-
 install_arch_dependencies() {
-  local packages=(python wl-clipboard zenity libnotify)
+  local packages=(python wl-clipboard xclip zenity libnotify)
   local missing=()
   mapfile -t missing < <(pacman -T "${packages[@]}" 2>/dev/null || true)
   ((${#missing[@]} == 0)) && return 0
@@ -59,7 +53,37 @@ install_arch_dependencies() {
   sudo pacman -S --needed "${missing[@]}"
 }
 
-install_arch_dependencies
+install_debian_dependencies() {
+  local packages=(python3 wl-clipboard xclip zenity libnotify-bin)
+  local missing=()
+  local package
+  for package in "${packages[@]}"; do
+    dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "install ok installed" \
+      || missing+=("$package")
+  done
+  ((${#missing[@]} == 0)) && return 0
+  if "$skip_deps"; then
+    echo "Missing packages (dependency installation skipped): ${missing[*]}" >&2
+    return 1
+  fi
+  echo "Missing Debian/Ubuntu packages: ${missing[*]}"
+  if ! "$assume_yes"; then
+    read -r -p "Install them with apt? [Y/n] " answer
+    [[ ${answer:-Y} =~ ^[Yy]$ ]] || exit 1
+  fi
+  sudo apt-get update
+  sudo apt-get install -y "${missing[@]}"
+}
+
+if [[ -f /etc/arch-release ]]; then
+  install_arch_dependencies
+elif [[ -f /etc/debian_version ]]; then
+  install_debian_dependencies
+else
+  echo "Automatic dependency installation supports Arch, Debian, and Ubuntu." >&2
+  echo "Install Python 3, wl-clipboard, xclip, Zenity, and libnotify manually, then rerun with --skip-deps." >&2
+  exit 1
+fi
 
 require_safe_path "$install_root"
 install -d "$install_root/src" "$bin_dir" "$config_home/sdf-translator"
@@ -89,10 +113,10 @@ if ! "$skip_editor"; then
   fi
 fi
 
-if ! "$skip_hotkey" && [[ -f "$config_home/niri/config.kdl" ]]; then
-  python3 "$project_root/scripts/configure_niri.py" \
-    --config "$config_home/niri/config.kdl" \
-    --command "$bin_dir/sdf-global"
+if ! "$skip_hotkey"; then
+  if ! "$bin_dir/sdf" --hotkey; then
+    echo "Automatic shortcut setup was unavailable. Run 'sdf --hotkey-help' for manual instructions." >&2
+  fi
 fi
 
 case ":$PATH:" in

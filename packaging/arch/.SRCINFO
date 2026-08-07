@@ -8,9 +8,11 @@ pkgbase = sdf-translator-git
 	makedepends = git
 	depends = python
 	depends = wl-clipboard
+	depends = xclip
 	depends = zenity
 	depends = libnotify
 	optdepends = niri: compositor hotkey integration
+	optdepends = xfconf: automatic Xfce hotkey integration
 	optdepends = neovim: Visual selection integration
 	optdepends = vim: Visual selection integration
 	provides = sdf-translator=r13.e653d0a

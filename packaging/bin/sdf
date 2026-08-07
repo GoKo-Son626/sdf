@@ -3,5 +3,7 @@ set -eu
 
 data_home=${XDG_DATA_HOME:-"$HOME/.local/share"}
 app_root=${SDF_INSTALL_ROOT:-"$data_home/sdf-translator/app"}
+launcher_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+export SDF_GLOBAL_COMMAND="$launcher_dir/sdf-global"
 export PYTHONPATH="$app_root/src${PYTHONPATH:+:$PYTHONPATH}"
 exec /usr/bin/python3 -m sdf_translate "$@"

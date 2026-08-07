@@ -6,10 +6,11 @@ pkgdesc="Fast global AI translation to Simplified Chinese"
 arch=(any)
 url="https://github.com/GoKo-Son626/sdf"
 license=(MIT)
-depends=(python wl-clipboard zenity libnotify)
+depends=(python wl-clipboard xclip zenity libnotify)
 makedepends=(git)
 optdepends=(
   "niri: compositor hotkey integration"
+  "xfconf: automatic Xfce hotkey integration"
   "neovim: Visual selection integration"
   "vim: Visual selection integration"
 )

@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
 
+export SDF_GLOBAL_COMMAND="/usr/bin/sdf-global"
 export PYTHONPATH="/usr/lib/sdf-translator${PYTHONPATH:+:$PYTHONPATH}"
 exec /usr/bin/python3 -m sdf_translate "$@"
