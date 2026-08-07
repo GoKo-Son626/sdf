@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Translate the current Wayland primary selection from a global hotkey."""
+"""Translate the current desktop selection from a global hotkey."""
 
 from __future__ import annotations
 
 import fcntl
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
 from .cli import load_config, translate_machine
+from .clipboard import read_selection
 
 MAX_INPUT_CHARS = 12000
 
@@ -46,25 +48,31 @@ def notify(
     if timeout_ms is not None:
         args.append(f"--expire-time={timeout_ms}")
     args.extend((title, message))
-    subprocess.Popen(
-        args,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    if shutil.which("notify-send"):
+        try:
+            subprocess.Popen(
+                args,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return
+        except OSError:
+            pass
+    show_message_dialog(title, message, urgency == "critical")
+
+
+def show_message_dialog(title: str, message: str, error: bool = False) -> None:
+    if shutil.which("zenity") or shutil.which("yad"):
+        program = "zenity" if shutil.which("zenity") else "yad"
+        kind = "--error" if error else "--info"
+        run([program, kind, f"--title={title}", f"--text={message}"])
+    elif shutil.which("kdialog"):
+        kind = "--error" if error else "--msgbox"
+        run(["kdialog", kind, message, f"--title={title}"])
 
 
 def clipboard_text(*, primary: bool) -> str:
-    args = ["wl-paste", "--no-newline"]
-    if primary:
-        args.append("--primary")
-    try:
-        completed = run(args, timeout=2)
-    except (OSError, subprocess.TimeoutExpired):
-        return ""
-    if completed.returncode != 0:
-        return ""
-    text = completed.stdout.replace("\x00", "").strip()
-    return text
+    return read_selection(primary=primary)
 
 
 def preview(text: str, limit: int = 320) -> str:
@@ -80,20 +88,23 @@ def confirm_clipboard(text: str) -> bool:
         "Translate the following regular clipboard content instead?\n\n"
         f"{preview(text)}"
     )
+    if shutil.which("zenity") or shutil.which("yad"):
+        program = "zenity" if shutil.which("zenity") else "yad"
+        args = [
+            program,
+            "--question",
+            "--title=SDF Translator",
+            "--ok-label=Translate",
+            "--cancel-label=Cancel",
+            "--width=520",
+            f"--text={message}",
+        ]
+    elif shutil.which("kdialog"):
+        args = ["kdialog", "--yesno", message, "--title=SDF Translator"]
+    else:
+        return False
     try:
-        completed = subprocess.run(
-            [
-                "zenity",
-                "--question",
-                "--title=SDF Translator",
-                "--ok-label=Translate",
-                "--cancel-label=Cancel",
-                "--width=520",
-                f"--text={message}",
-            ],
-            timeout=120,
-            check=False,
-        )
+        completed = run(args, timeout=120)
     except (OSError, subprocess.TimeoutExpired):
         return False
     return completed.returncode == 0
@@ -147,9 +158,10 @@ def show_translation_result(
         ) as handle:
             handle.write(content)
             temp_path = handle.name
-        subprocess.run(
-            [
-                "zenity",
+        if shutil.which("zenity") or shutil.which("yad"):
+            program = "zenity" if shutil.which("zenity") else "yad"
+            args = [
+                program,
                 "--text-info",
                 "--title=Translation Result",
                 "--width=760",
@@ -157,9 +169,20 @@ def show_translation_result(
                 "--ok-label=Close",
                 "--font=Sans 12",
                 f"--filename={temp_path}",
-            ],
-            check=False,
-        )
+            ]
+        elif shutil.which("kdialog"):
+            args = [
+                "kdialog",
+                "--textbox",
+                temp_path,
+                "760",
+                "480",
+                "--title=Translation Result",
+            ]
+        else:
+            show_message_dialog("Translation Result", content)
+            return
+        run(args)
     finally:
         if temp_path:
             try:
@@ -181,7 +204,11 @@ def show_result(payload: dict[str, object]) -> None:
         warning_text = "\n".join(str(item) for item in warnings)
         error = str(payload.get("error") or "Translation failed")
         message = f"{warning_text}\n{error}".strip()
-        title = "Translation Blocked" if error.startswith("Translation blocked:") else "Translation Failed"
+        title = (
+            "Translation Blocked"
+            if error.startswith("Translation blocked:")
+            else "Translation Failed"
+        )
         notify(title, message, "critical")
         return
 

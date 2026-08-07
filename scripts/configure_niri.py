@@ -4,51 +4,31 @@
 from __future__ import annotations
 
 import argparse
-import re
 from pathlib import Path
+import sys
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
+
+from sdf_translate.hotkeys import DEFAULT_SHORTCUT, configure_niri
 
 
-BIND_PATTERN = re.compile(r"^\s*(?:Mod|Super)\+Shift\+T\b.*$", re.MULTILINE)
-
-
-def configure(config_file: Path, command: str) -> str:
-    if not config_file.exists():
-        raise RuntimeError(f"niri configuration not found: {config_file}")
-
-    text = config_file.read_text(encoding="utf-8")
-    binding = (
-        "    Mod+Shift+T repeat=false allow-inhibiting=false "
-        'hotkey-overlay-title="Translate Selected Text" '
-        f'{{ spawn "{command}"; }}'
-    )
-
-    if BIND_PATTERN.search(text):
-        updated = BIND_PATTERN.sub(binding, text, count=1)
-        action = "updated"
-    else:
-        marker = re.search(r"^binds\s*\{\s*$", text, re.MULTILINE)
-        if not marker:
-            raise RuntimeError("no binds { block was found in the niri configuration")
-        insert_at = marker.end()
-        updated = text[:insert_at] + "\n" + binding + text[insert_at:]
-        action = "installed"
-
-    if updated != text:
-        config_file.write_text(updated, encoding="utf-8")
-    return action
+def configure(config_file: Path, command: str, shortcut: str = DEFAULT_SHORTCUT) -> str:
+    return configure_niri(config_file, command, shortcut)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--command", required=True)
+    parser.add_argument("--shortcut", default=DEFAULT_SHORTCUT)
     args = parser.parse_args()
     try:
-        action = configure(args.config.expanduser(), args.command)
+        action = configure(args.config.expanduser(), args.command, args.shortcut)
     except RuntimeError as exc:
         print(f"Failed to configure the niri shortcut: {exc}")
         return 1
-    print(f"niri shortcut {action}: Super+Shift+T -> {args.command}")
+    print(f"niri shortcut {action}: {args.shortcut} -> {args.command}")
     return 0
 
 

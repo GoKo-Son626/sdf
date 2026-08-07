@@ -11,6 +11,8 @@ import stat
 from typing import Callable, Mapping
 
 from . import __version__
+from .clipboard import display_server, preferred_backend
+from .hotkeys import desktop_name
 from .paths import config_file
 from .storage import save_mode, vocabulary_path
 
@@ -41,32 +43,65 @@ def collect_diagnostics(
         ),
     ]
 
-    wayland = environment.get("WAYLAND_DISPLAY", "").strip()
-    if wayland:
-        items.append(DiagnosticItem("Display session", f"Wayland ({wayland})"))
+    server = display_server(environment)
+    if server in {"wayland", "x11"}:
+        endpoint = environment.get(
+            "WAYLAND_DISPLAY" if server == "wayland" else "DISPLAY", ""
+        )
+        detail = server.title() + (f" ({endpoint})" if endpoint else "")
+        items.append(DiagnosticItem("Display session", detail))
     else:
         items.append(
             DiagnosticItem(
                 "Display session",
-                "Wayland was not detected; terminal translation works, but global selection does not",
+                "Neither Wayland nor X11 was detected; terminal translation still works",
                 "warning",
             )
         )
 
-    for command, purpose in (
-        ("wl-copy", "write the Wayland selection"),
-        ("wl-paste", "read the Wayland selection"),
-        ("zenity", "show long translation results"),
-        ("notify-send", "show term results and errors"),
-    ):
-        resolved = find_command(command)
-        items.append(
-            DiagnosticItem(
-                command,
-                f"Installed: {resolved}" if resolved else f"Missing: required to {purpose}",
-                "ok" if resolved else "error",
-            )
+    backend = preferred_backend(environment, which=find_command)
+    items.append(
+        DiagnosticItem(
+            "Clipboard",
+            f"{backend.name} ({backend.display_server})"
+            if backend
+            else "No compatible backend; install wl-clipboard for Wayland or xclip for X11",
+            "ok" if backend else "error",
         )
+    )
+
+    dialog = next(
+        (name for name in ("zenity", "yad", "kdialog") if find_command(name)),
+        None,
+    )
+    items.append(
+        DiagnosticItem(
+            "Result dialog",
+            dialog or "Missing: install zenity, yad, or kdialog",
+            "ok" if dialog else "error",
+        )
+    )
+    notifier = find_command("notify-send")
+    items.append(
+        DiagnosticItem(
+            "Notifications",
+            f"notify-send ({notifier})"
+            if notifier
+            else "notify-send is missing; dialogs will be used instead",
+            "ok" if notifier else "warning",
+        )
+    )
+    desktop = desktop_name(environment)
+    auto = desktop in {"niri", "xfce"}
+    items.append(
+        DiagnosticItem(
+            "Desktop shortcut",
+            f"{desktop}: automatic setup is supported"
+            if auto
+            else f"{desktop}: configure sdf-global in keyboard settings",
+            "ok" if auto else "warning",
+        )
+    )
 
     path = config_file()
     if path.exists():

@@ -1,10 +1,10 @@
-" Synchronize Vim's Visual selection with Wayland's primary selection.
+" Synchronize Vim's Visual selection with the desktop primary selection.
 if exists('g:loaded_sdf_selection') || get(g:, 'sdf_selection_sync', 1) == 0
   finish
 endif
 let g:loaded_sdf_selection = 1
 
-if !executable('wl-copy') || !exists('*getregion')
+if !executable('sdf') || !exists('*getregion')
   finish
 endif
 
@@ -24,21 +24,18 @@ function! s:SyncSelection() abort
     return
   endif
   let s:owned_text = l:text
-  call system(['wl-copy', '--primary'], l:text)
+  call system(['sdf', '--selection-write'], l:text)
 endfunction
 
 function! s:ClearSelection() abort
-  if s:IsVisual() || empty(s:owned_text) || !executable('wl-paste')
+  if s:IsVisual() || empty(s:owned_text)
     return
   endif
-  let l:current = system(['wl-paste', '--primary', '--no-newline'])
-  if v:shell_error == 0 && l:current ==# s:owned_text
-    call system(['wl-copy', '--primary', '--clear'])
-  endif
+  call system(['sdf', '--selection-clear-if-owned'], s:owned_text)
   let s:owned_text = ''
 endfunction
 
-augroup SdfWaylandSelection
+augroup SdfDesktopSelection
   autocmd!
   autocmd CursorMoved,ModeChanged * call <SID>SyncSelection() | call <SID>ClearSelection()
 augroup END

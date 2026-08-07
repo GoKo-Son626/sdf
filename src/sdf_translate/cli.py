@@ -9,6 +9,7 @@ import json
 import os
 import re
 import select
+import shutil
 import sys
 import urllib.error
 import urllib.parse
@@ -146,6 +147,7 @@ def save_config_values(
         "SAVE_MODE",
         "VOCABULARY_FILE",
         "HTTPS_PROXY",
+        "GLOBAL_SHORTCUT",
     )
     for key in ordered_keys:
         if disk_config.get(key):
@@ -1053,6 +1055,10 @@ Commands:
 Command-line options:
   sdf --version    Show the version
   sdf --doctor     Safely inspect the environment and configuration
+  sdf --hotkey [shortcut] [--force]
+                   Install or change the niri/Xfce global shortcut
+  sdf --hotkey-help
+                   Show manual shortcut setup guidance
 """.strip()
 
 
@@ -1173,6 +1179,47 @@ def main() -> int:
         return 0
     if sys.argv[1] == "--doctor":
         return print_diagnostics(load_config())
+    if sys.argv[1] in ("--hotkey", "--shortcut"):
+        from .hotkeys import DEFAULT_SHORTCUT, configure_shortcut
+
+        force = "--force" in sys.argv[2:]
+        values = [value for value in sys.argv[2:] if value != "--force"]
+        shortcut = values[0] if values else DEFAULT_SHORTCUT
+        current_config = load_config()
+        command = os.environ.get("SDF_GLOBAL_COMMAND", "").strip()
+        if not command:
+            command = shutil.which("sdf-global") or "sdf-global"
+        try:
+            desktop, action = configure_shortcut(
+                command,
+                shortcut,
+                force=force,
+                previous_shortcut=current_config.get("GLOBAL_SHORTCUT", ""),
+            )
+        except (RuntimeError, ValueError) as exc:
+            print(f"Shortcut setup failed: {exc}", file=sys.stderr)
+            return 1
+        save_config_values({"GLOBAL_SHORTCUT": shortcut})
+        print(f"{desktop} shortcut {action}: {shortcut} -> {command}")
+        return 0
+    if sys.argv[1] == "--hotkey-help":
+        from .hotkeys import manual_shortcut_help
+
+        command = (
+            os.environ.get("SDF_GLOBAL_COMMAND", "").strip()
+            or shutil.which("sdf-global")
+            or "sdf-global"
+        )
+        print(manual_shortcut_help(command))
+        return 0
+    if sys.argv[1] == "--selection-write":
+        from .clipboard import write_primary
+
+        return 0 if write_primary(sys.stdin.read()) else 1
+    if sys.argv[1] == "--selection-clear-if-owned":
+        from .clipboard import clear_primary_if_owned
+
+        return 0 if clear_primary_if_owned(sys.stdin.read()) else 1
     if sys.argv[1] == "--setup":
         return 0 if configure_provider() else 1
     if sys.argv[1] == "--free-api-help":

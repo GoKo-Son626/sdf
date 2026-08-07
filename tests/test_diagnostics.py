@@ -26,17 +26,25 @@ class DiagnosticsTests(unittest.TestCase):
         self.assertNotIn(config["API_KEY"], output.getvalue())
         self.assertIn("DeepSeek", output.getvalue())
 
-    def test_missing_desktop_commands_are_errors(self) -> None:
+    def test_missing_desktop_backends_are_reported(self) -> None:
         items = diagnostics.collect_diagnostics(
             {"SAVE_MODE": "off"},
             environ={},
             which=lambda command: None,
         )
         missing = [item for item in items if item.level == "error"]
-        self.assertEqual(
-            {item.label for item in missing},
-            {"wl-copy", "wl-paste", "zenity", "notify-send"},
+        self.assertEqual({item.label for item in missing}, {"Clipboard", "Result dialog"})
+
+    def test_x11_accepts_xclip_without_wayland_tools(self) -> None:
+        installed = {"xclip", "zenity", "notify-send", "xfconf-query"}
+        items = diagnostics.collect_diagnostics(
+            {"SAVE_MODE": "off"},
+            environ={"XDG_SESSION_TYPE": "x11", "DISPLAY": ":0", "XDG_CURRENT_DESKTOP": "XFCE"},
+            which=lambda command: f"/usr/bin/{command}" if command in installed else None,
         )
+        self.assertFalse(any(item.level == "error" for item in items))
+        clipboard_item = next(item for item in items if item.label == "Clipboard")
+        self.assertIn("xclip", clipboard_item.detail)
 
     def test_private_config_permissions_are_accepted(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

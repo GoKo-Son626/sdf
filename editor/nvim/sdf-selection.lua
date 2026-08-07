@@ -1,6 +1,6 @@
--- Keep Neovim's Visual selection in Wayland's primary selection so the
--- compositor-level SDF hotkey receives the text currently highlighted here.
-if vim.g.sdf_selection_sync == 0 or vim.fn.executable("wl-copy") == 0 then
+-- Keep Neovim's Visual selection in the desktop primary selection so the
+-- SDF global hotkey receives the text currently highlighted here.
+if vim.g.sdf_selection_sync == 0 or vim.fn.executable("sdf") == 0 then
   return
 end
 
@@ -44,7 +44,7 @@ local function copy_visual_selection()
       return
     end
     owned_text = value
-    vim.system({ "wl-copy", "--primary" }, { stdin = value, detach = true })
+    vim.system({ "sdf", "--selection-write" }, { stdin = value, detach = true })
   end, 35)
 end
 
@@ -52,17 +52,16 @@ local function clear_our_selection()
   generation = generation + 1
   local previous = owned_text
   owned_text = nil
-  if not previous or vim.fn.executable("wl-paste") == 0 then
+  if not previous then
     return
   end
-  vim.system({ "wl-paste", "--primary", "--no-newline" }, { text = true }, function(result)
-    if result.code == 0 and result.stdout == previous then
-      vim.system({ "wl-copy", "--primary", "--clear" }, { detach = true })
-    end
-  end)
+  vim.system(
+    { "sdf", "--selection-clear-if-owned" },
+    { stdin = previous, detach = true }
+  )
 end
 
-local group = vim.api.nvim_create_augroup("SdfWaylandSelection", { clear = true })
+local group = vim.api.nvim_create_augroup("SdfDesktopSelection", { clear = true })
 vim.api.nvim_create_autocmd({ "CursorMoved", "ModeChanged" }, {
   group = group,
   callback = function()
